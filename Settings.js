@@ -857,6 +857,8 @@ function saveCalendarSelection(service, calendarId, selected) {
     }
 }
 
+
+
 function saveAllCalendarSelections() {
     // Save all currently visible calendar selections
     document.querySelectorAll('.calendar-checkbox').forEach(checkbox => {
