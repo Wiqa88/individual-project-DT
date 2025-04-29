@@ -463,7 +463,8 @@ function setupCalendarIntegrationListeners() {
 
 // Google Calendar Integration Functions
 function showGoogleAuthModal() {
-    document.getElementById('google-auth-modal').style.display = 'flex';
+    // Instead of showing modal, directly initiate authentication
+    initiateGoogleAuth();
 }
 
 function initiateGoogleAuth() {
@@ -476,9 +477,189 @@ function initiateGoogleAuth() {
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=${responseType}&access_type=${accessType}&prompt=${prompt}`;
 
-    window.open(authUrl, '_blank', 'width=500,height=600');
+    // Open auth window
+    window.location.href = authUrl; // Redirect instead of opening a new window
 }
 
+function toggleGoogleCalendarSync(enabled) {
+    if (enabled) {
+        fetchGoogleCalendars();
+    } else {
+        // Disable sync
+        localStorage.setItem('google-calendar-sync', 'false');
+        updateGoogleConnectionStatus(false);
+        document.getElementById('google-calendars-container').style.display = 'none';
+    }
+}
+
+function updateGoogleConnectionStatus(connected) {
+    const connectBtn = document.getElementById('google-connect-btn');
+
+    if (connected) {
+        connectBtn.textContent = 'Connected';
+        connectBtn.classList.add('connected');
+        connectBtn.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
+    } else {
+        connectBtn.textContent = 'Connect';
+        connectBtn.classList.remove('connected');
+        connectBtn.innerHTML = '<i class="fab fa-google"></i> Connect';
+    }
+}
+
+function fetchGoogleCalendars() {
+    // Show loading state
+    const calendarsContainer = document.getElementById('google-calendars-container');
+    calendarsContainer.style.display = 'block';
+
+    const calendarList = document.getElementById('google-calendar-list');
+    calendarList.innerHTML = '<div class="loading-calendars">Loading calendars...</div>';
+
+    // Use our API endpoint to fetch calendars
+    fetch('/api/calendars')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch calendars');
+            }
+            return response.json();
+        })
+        .then(data => {
+            calendarList.innerHTML = '';
+            localStorage.setItem('google-calendar-sync', 'true');
+            updateGoogleConnectionStatus(true);
+
+            // Process calendar items
+            data.items.forEach(calendar => {
+                const calendarItem = document.createElement('div');
+                calendarItem.className = 'calendar-item';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'calendar-checkbox';
+                checkbox.checked = true;
+                checkbox.dataset.calendarId = calendar.id;
+                checkbox.dataset.calendarService = 'google';
+
+                const colorDot = document.createElement('span');
+                colorDot.className = 'calendar-color';
+                colorDot.style.backgroundColor = calendar.backgroundColor || '#4285F4';
+
+                const calendarName = document.createElement('span');
+                calendarName.className = 'calendar-name';
+                calendarName.textContent = calendar.summary;
+
+                calendarItem.appendChild(checkbox);
+                calendarItem.appendChild(colorDot);
+                calendarItem.appendChild(calendarName);
+
+                calendarList.appendChild(calendarItem);
+
+                // Add event listener to save selection changes
+                checkbox.addEventListener('change', function() {
+                    saveCalendarSelection('google', calendar.id, this.checked);
+                });
+            });
+
+            // Save initial calendar selections
+            saveAllCalendarSelections();
+
+            // Show fetch events button
+            const showEventsBtn = document.createElement('button');
+            showEventsBtn.textContent = 'Show Events';
+            showEventsBtn.className = 'show-events-btn';
+            showEventsBtn.addEventListener('click', function() {
+                const selectedCalendars = document.querySelectorAll('#google-calendar-list .calendar-checkbox:checked');
+                if (selectedCalendars.length > 0) {
+                    const calendarId = selectedCalendars[0].dataset.calendarId;
+                    fetchEventsFromCalendar(calendarId);
+                }
+            });
+            calendarList.appendChild(showEventsBtn);
+        })
+        .catch(error => {
+            console.error('Error fetching calendars:', error);
+            calendarList.innerHTML = `<div class="error-message">Failed to fetch calendars: ${error.message}</div>`;
+        });
+}
+
+function fetchEventsFromCalendar(calendarId) {
+    // Display a loading message
+    const calendarList = document.getElementById('google-calendar-list');
+    const eventsDiv = document.createElement('div');
+    eventsDiv.id = 'calendar-events';
+    eventsDiv.innerHTML = 'Loading events...';
+
+    // Remove any existing events display
+    const existingEvents = document.getElementById('calendar-events');
+    if (existingEvents) {
+        existingEvents.remove();
+    }
+
+    calendarList.appendChild(eventsDiv);
+
+    // Fetch events from the server
+    fetch(`/api/events/${encodeURIComponent(calendarId)}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch events');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Display events
+            eventsDiv.innerHTML = '<h4>Upcoming Events</h4>';
+
+            if (data.items && data.items.length > 0) {
+                const eventsList = document.createElement('ul');
+                eventsList.className = 'events-list';
+
+                data.items.forEach(event => {
+                    const eventItem = document.createElement('li');
+
+                    // Format date
+                    let startTime = 'All day';
+                    if (event.start.dateTime) {
+                        const date = new Date(event.start.dateTime);
+                        startTime = date.toLocaleString();
+                    } else if (event.start.date) {
+                        startTime = new Date(event.start.date).toLocaleDateString();
+                    }
+
+                    eventItem.innerHTML = `
+                        <strong>${event.summary || 'Untitled Event'}</strong>
+                        <div>${startTime}</div>
+                    `;
+
+                    eventsList.appendChild(eventItem);
+                });
+
+                eventsDiv.appendChild(eventsList);
+            } else {
+                eventsDiv.innerHTML += '<p>No upcoming events found</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching events:', error);
+            eventsDiv.innerHTML = `<div class="error-message">Failed to fetch events: ${error.message}</div>`;
+        });
+}
+
+// Check if we're returning from OAuth
+document.addEventListener("DOMContentLoaded", function() {
+    // Check URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const authSuccess = urlParams.get('auth') === 'success';
+
+    if (authSuccess) {
+        // Show success message
+        alert("Successfully connected to Google Calendar!");
+
+        // Fetch calendars
+        document.getElementById('google-calendar-sync').checked = true;
+        fetchGoogleCalendars();
+    }
+
+    // Rest of your DOMContentLoaded code...
+});
 // If you're using Express.js
 app.get('/auth/google/callback', (req, res) => {
     const code = req.query.code;
