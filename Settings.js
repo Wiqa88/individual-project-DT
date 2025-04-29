@@ -467,12 +467,8 @@ function showGoogleAuthModal() {
 }
 
 function initiateGoogleAuth() {
-    // Real Google OAuth 2.0 flow
     const clientId = '233840126993-uned9hu7bedgpnursvggctc8c0qvussl.apps.googleusercontent.com';
-
-    // Replace this with your actual registered redirect URI from Google Cloud Console
-    const redirectUri = encodeURIComponent('http://localhost:63342/todo.css/Settings.html');
-
+    const redirectUri = encodeURIComponent('http://localhost:3000/auth/google/callback');
     const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.readonly');
     const responseType = 'code';
     const accessType = 'offline';
@@ -480,7 +476,6 @@ function initiateGoogleAuth() {
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}&response_type=${responseType}&access_type=${accessType}&prompt=${prompt}`;
 
-    // Open the OAuth consent window
     window.open(authUrl, '_blank', 'width=500,height=600');
 }
 

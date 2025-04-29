@@ -1,25 +1,20 @@
 const express = require('express');
-const axios = require('axios');
 const path = require('path');
-
+const axios = require('axios');
 const app = express();
-const PORT = 63342; // This should match your redirect URI port
+const PORT = 3000; // You can change this to any port you want
 
-// Serve static files from the current folder
-app.use(express.static(__dirname));
+// Serve static files from the project directory
+app.use(express.static(path.join(__dirname)));
 
-// OAuth callback route
+// Route to handle Google OAuth callback
 app.get('/auth/google/callback', async (req, res) => {
     const code = req.query.code;
     console.log('Authorization code received:', code);
 
-    try {
-        // Redirect to your Settings page on success
-        res.redirect('/Settings.html?auth=success');
-    } catch (error) {
-        console.error('OAuth callback error:', error);
-        res.redirect('/Settings.html?auth=error');
-    }
+    // Store the code or exchange it for tokens
+    // For now, redirect to Settings.html
+    res.redirect('/Settings.html?auth=success');
 });
 
 // Start the server
