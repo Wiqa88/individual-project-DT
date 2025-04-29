@@ -569,4 +569,33 @@ input:checked + .toggle-slider:before {
     overflow: hidden;
 }
 
+.events-list {
+    list-style: none;
+    padding: 0;
+    margin: 10px 0;
+}
+
+.events-list li {
+    padding: 8px;
+    margin-bottom: 8px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    border-left: 3px solid #4285F4;
+}
+
+.show-events-btn {
+    margin-top: 10px;
+    padding: 5px 10px;
+    background-color: #4285F4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.error-message {
+    color: #e53935;
+    margin: 10px 0;
+}
+
 /* Add these styles to your existing Settings.css file */
