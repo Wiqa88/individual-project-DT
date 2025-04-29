@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar</title>
+    <link rel="stylesheet" href="Cal.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+<div class="container">
+    <div class="left-column">
+        <div class="sidebar-main">
+            <nav>
+                <ul>
+                    <li><a href="todo.html"><img src="note.png" alt="To-Do"></a></li>
+                    <li><a href="Cal.html"><img src="calendar.png" alt="Calendar"></a></li>
+                    <li><a href="#"><img src="clock.png" alt="Pomodoro"></a></li>
+                    <li><a href="#"><img src="matrix.png" alt="Eisenhower Matrix"></a></li>
+                    <li><a href="#"><img src="habits.png" alt="Habits"></a></li>
+                    <!-- Settings icon added to the bottom -->
+                    <li class="settings-li"><a href="Settings.html"><i class="fas fa-cog"></i></a></li>
+
+                </ul>
+            </nav>
+        </div>
+
+        <div class="sidebar-left">
+            <div class="menu">
+                <a href="#" id="add-event-link"><i class="fas fa-plus-circle"></i> Add Event</a>
+                <a href="#"><i class="fas fa-search"></i> Search</a>
+                <a href="#" id="today-link"><i class="fas fa-calendar-day"></i> Today</a>
+                <a href="#" id="week-link"><i class="fas fa-calendar-week"></i> Week View</a>
+                <a href="#" id="month-link"><i class="fas fa-calendar-alt"></i> Month View</a>
+                <a href="#" id="agenda-link"><i class="fas fa-list-alt"></i> Agenda</a>
+            </div>
+
+            <div class="separator-line"></div>
+
+            <div class="menu">
+                <div class="lists-header">
+                    <span>Lists</span>
+                    <button id="add-list-btn" title="Add New List"><i class="fas fa-plus"></i></button>
+                </div>
+                <div id="lists-container">
+                    <!-- Lists will be dynamically added here -->
+                </div>
+            </div>
+
+            <div class="separator-line"></div>
+
+            <div class="mini-calendar">
+                <div class="mini-calendar-header">
+                    <button id="prev-month-btn"><i class="fas fa-chevron-left"></i></button>
+                    <h3 id="mini-calendar-title">April 2025</h3>
+                    <button id="next-month-btn"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div class="mini-calendar-weekdays">
+                    <span>Su</span>
+                    <span>Mo</span>
+                    <span>Tu</span>
+                    <span>We</span>
+                    <span>Th</span>
+                    <span>Fr</span>
+                    <span>Sa</span>
+                </div>
+                <div class="mini-calendar-days" id="mini-calendar-days">
+                    <!-- Days will be added dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main>
+        <div class="calendar-header">
+            <div class="calendar-navigation">
+                <button id="prev-period"><i class="fas fa-chevron-left"></i></button>
+                <h1 id="calendar-title">April 2025</h1>
+                <button id="next-period"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="view-options">
+                <button class="view-option" data-view="day">Day</button>
+                <button class="view-option" data-view="week">Week</button>
+                <button class="view-option active" data-view="month">Month</button>
+            </div>
+        </div>
+
+        <!-- Calendar Views -->
+        <div class="calendar-container">
+            <!-- Month View -->
+            <div id="month-view" class="calendar-view active">
+                <div class="calendar-weekdays">
+                    <div>Sunday</div>
+                    <div>Monday</div>
+                    <div>Tuesday</div>
+                    <div>Wednesday</div>
+                    <div>Thursday</div>
+                    <div>Friday</div>
+                    <div>Saturday</div>
+                </div>
+                <div class="calendar-grid" id="month-grid">
+                    <!-- Calendar days will be added dynamically -->
+                </div>
+            </div>
+
+            <!-- Week View -->
+            <div id="week-view" class="calendar-view">
+                <div class="time-labels">
+                    <div class="time-label">12 AM</div>
+                    <div class="time-label">1 AM</div>
+                    <div class="time-label">2 AM</div>
+                    <div class="time-label">3 AM</div>
+                    <div class="time-label">4 AM</div>
+                    <div class="time-label">5 AM</div>
+                    <div class="time-label">6 AM</div>
+                    <div class="time-label">7 AM</div>
+                    <div class="time-label">8 AM</div>
+                    <div class="time-label">9 AM</div>
+                    <div class="time-label">10 AM</div>
+                    <div class="time-label">11 AM</div>
+                    <div class="time-label">12 PM</div>
+                    <div class="time-label">1 PM</div>
+                    <div class="time-label">2 PM</div>
+                    <div class="time-label">3 PM</div>
+                    <div class="time-label">4 PM</div>
+                    <div class="time-label">5 PM</div>
+                    <div class="time-label">6 PM</div>
+                    <div class="time-label">7 PM</div>
+                    <div class="time-label">8 PM</div>
+                    <div class="time-label">9 PM</div>
+                    <div class="time-label">10 PM</div>
+                    <div class="time-label">11 PM</div>
+                </div>
+                <div class="week-container">
+                    <div class="week-header" id="week-header">
+                        <!-- Day headers will be added dynamically -->
+                    </div>
+                    <div class="week-grid" id="week-grid">
+                        <!-- Week grid will be added dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Day View -->
+            <div id="day-view" class="calendar-view">
+                <div class="time-labels">
+                    <div class="time-label">12 AM</div>
+                    <div class="time-label">1 AM</div>
+                    <div class="time-label">2 AM</div>
+                    <div class="time-label">3 AM</div>
+                    <div class="time-label">4 AM</div>
+                    <div class="time-label">5 AM</div>
+                    <div class="time-label">6 AM</div>
+                    <div class="time-label">7 AM</div>
+                    <div class="time-label">8 AM</div>
+                    <div class="time-label">9 AM</div>
+                    <div class="time-label">10 AM</div>
+                    <div class="time-label">11 AM</div>
+                    <div class="time-label">12 PM</div>
+                    <div class="time-label">1 PM</div>
+                    <div class="time-label">2 PM</div>
+                    <div class="time-label">3 PM</div>
+                    <div class="time-label">4 PM</div>
+                    <div class="time-label">5 PM</div>
+                    <div class="time-label">6 PM</div>
+                    <div class="time-label">7 PM</div>
+                    <div class="time-label">8 PM</div>
+                    <div class="time-label">9 PM</div>
+                    <div class="time-label">10 PM</div>
+                    <div class="time-label">11 PM</div>
+                </div>
+                <div class="day-container">
+                    <div class="day-header" id="day-header">
+                        <!-- Day header will be added dynamically -->
+                    </div>
+                    <div class="day-grid" id="day-grid">
+                        <!-- Day grid will be added dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Event Creation Modal -->
+<div class="modal" id="event-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add Event</h2>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="event-title">Title</label>
+                <input type="text" id="event-title" placeholder="Event title" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="event-date">Date</label>
+                    <input type="date" id="event-date" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-time">Time</label>
+                    <input type="time" id="event-time">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="event-end-date">End Date</label>
+                    <input type="date" id="event-end-date">
+                </div>
+                <div class="form-group">
+                    <label for="event-end-time">End Time</label>
+                    <input type="time" id="event-end-time">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="event-description">Description</label>
+                <textarea id="event-description" placeholder="Event description"></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="event-list">List</label>
+                    <select id="event-list">
+                        <option value="none">None</option>
+                        <!-- Lists will be added dynamically -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="event-priority">Priority</label>
+                    <select id="event-priority">
+                        <option value="none">None</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="add-as-task">Add as Task</label>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="add-as-task">
+                    <label for="add-as-task"></label>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="cancel-event">Cancel</button>
+            <button id="save-event">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Event Details Modal -->
+<div class="modal" id="event-details-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="detail-event-title">Event Title</h2>
+            <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="event-detail">
+                <i class="fas fa-calendar"></i>
+                <span id="detail-event-date">Date</span>
+            </div>
+            <div class="event-detail">
+                <i class="fas fa-clock"></i>
+                <span id="detail-event-time">Time</span>
+            </div>
+            <div class="event-detail">
+                <i class="fas fa-list-alt"></i>
+                <span id="detail-event-list">List</span>
+            </div>
+            <div class="event-detail">
+                <i class="fas fa-flag"></i>
+                <span id="detail-event-priority">Priority</span>
+            </div>
+            <div class="event-description" id="detail-event-description">
+                Description
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="delete-event">Delete</button>
+            <button id="edit-event">Edit</button>
+        </div>
+    </div>
+</div>
+
+<script src="Cal.js"></script>
+</body>
+
+</html>

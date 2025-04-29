@@ -1,0 +1,702 @@
+/* Reset Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+/* Container that holds the sidebars and main content */
+.container {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+
+.left-column {
+    display: flex;
+    flex-direction: row;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 100;
+}
+
+/* Sidebar: Navigation Icons (First Sidebar) */
+.sidebar-main {
+    width: 100px;
+    background: #e0e0e0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    flex-shrink: 0;
+    padding-top: 20px;
+}
+
+.sidebar-main nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.sidebar-main nav ul li {
+    margin-bottom: 30px;
+}
+
+.sidebar-main nav ul li a img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    transition: transform 0.2s ease-in-out;
+}
+
+.sidebar-main nav ul li a img:hover {
+    transform: scale(1.1);
+}
+
+/* Sidebar: Task Management (Second Sidebar) */
+.sidebar-left {
+    width: 220px;
+    background: #f4f4f4;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+}
+
+/* Sidebar Menu Links */
+.sidebar-left .menu {
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+}
+
+.sidebar-left .menu a {
+    text-decoration: none;
+    color: black;
+    padding: 10px 0;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sidebar-left .menu a i {
+    width: 20px;
+    height: 20px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #181f30;
+}
+
+.sidebar-left .menu a:hover i {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}
+
+/* Separator line */
+.separator-line {
+    border-top: 1px solid #ccc;
+    margin: 10px 0;
+}
+
+/* Lists header */
+.lists-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+}
+
+.lists-header span {
+    font-weight: bold;
+}
+
+#add-list-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#add-list-btn i {
+    font-size: 14px;
+    color: #1e3a8a;
+}
+
+/* Lists container */
+.list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+}
+
+.list-actions {
+    display: none;
+}
+
+.list-item:hover .list-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.list-edit-btn, .list-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #555;
+    font-size: 12px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.list-edit-btn:hover {
+    background-color: #e0e0e0;
+    color: #1e3a8a;
+}
+
+.list-delete-btn:hover {
+    background-color: #ffe0e0;
+    color: #ff5555;
+}
+
+.list-name {
+    cursor: pointer;
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+}
+
+.list-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+/* Mini Calendar */
+.mini-calendar {
+    margin-top: 20px;
+}
+
+.mini-calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.mini-calendar-header button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #555;
+    font-size: 14px;
+}
+
+.mini-calendar-header h3 {
+    font-size: 14px;
+    margin: 0;
+}
+
+.mini-calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 5px;
+}
+
+.mini-calendar-weekdays span {
+    text-align: center;
+    font-size: 12px;
+    color: #777;
+}
+
+.mini-calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.mini-calendar-day {
+    text-align: center;
+    padding: 3px;
+    font-size: 12px;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.mini-calendar-day:hover {
+    background-color: #e0e0e0;
+}
+
+.mini-calendar-day.current {
+    background-color: #1e3a8a;
+    color: white;
+}
+
+.mini-calendar-day.other-month {
+    color: #bbb;
+}
+
+.mini-calendar-day.has-events {
+    font-weight: bold;
+    position: relative;
+}
+
+.mini-calendar-day.has-events::after {
+    content: "";
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background-color: #1e3a8a;
+}
+
+/* Main Content */
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    margin-left: 320px; /* Combined width of both sidebars */
+    overflow-y: auto;
+    height: 100vh;
+}
+
+/* Calendar Header */
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.calendar-navigation {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.calendar-navigation button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #555;
+    font-size: 18px;
+    transition: color 0.2s;
+}
+
+.calendar-navigation button:hover {
+    color: #1e3a8a;
+}
+
+.calendar-navigation h1 {
+    font-size: 24px;
+    margin: 0;
+}
+
+.view-options {
+    display: flex;
+    gap: 5px;
+}
+
+.view-option {
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.view-option:hover {
+    background-color: #e0e0e0;
+}
+
+.view-option.active {
+    background-color: #1e3a8a;
+    color: white;
+    border-color: #1e3a8a;
+}
+
+/* Calendar Container */
+.calendar-container {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Calendar Views */
+.calendar-view {
+    display: none;
+    height: 100%;
+}
+
+.calendar-view.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Month View */
+#month-view {
+    height: 100%;
+}
+
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background-color: #f9f9f9;
+    border-bottom: 1px solid #ddd;
+}
+
+.calendar-weekdays div {
+    text-align: center;
+    padding: 10px;
+    font-weight: bold;
+    color: #555;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    flex: 1;
+    height: calc(100% - 40px);
+}
+
+.calendar-day {
+    border-right: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+    padding: 8px;
+    position: relative;
+    min-height: 100px;
+    overflow: hidden;
+}
+
+.calendar-day:hover {
+    background-color: #f9f9f9;
+}
+
+.day-number {
+    font-size: 14px;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #333;
+}
+
+.other-month .day-number {
+    color: #bbb;
+}
+
+.today .day-number {
+    background-color: #1e3a8a;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.day-events {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.event {
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    margin-bottom: 2px;
+    position: relative;
+    color: white;
+    transition: transform 0.2s;
+}
+
+.event:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.event.personal {
+    background-color: #3498db;
+}
+
+.event.work {
+    background-color: #e74c3c;
+}
+
+.event.shopping {
+    background-color: #2ecc71;
+}
+
+/* Week View */
+#week-view {
+    flex-direction: row;
+}
+
+.time-labels {
+    width: 60px;
+    border-right: 1px solid #eee;
+    padding-top: 50px; /* Match the height of the day headers */
+}
+
+.time-label {
+    height: 60px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding-right: 10px;
+    font-size: 12px;
+    color: #777;
+    position: relative;
+}
+
+.time-label::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 5px;
+    height: 1px;
+    background-color: #ddd;
+}
+
+.week-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.week-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    height: 50px;
+    border-bottom: 1px solid #eee;
+}
+
+.day-header {
+    text-align: center;
+    padding: 15px;
+    font-weight: bold;
+    border-right: 1px solid #eee;
+}
+
+.day-header.today {
+    background-color: #f0f4ff;
+}
+
+.week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    flex: 1;
+}
+
+.week-column {
+    border-right: 1px solid #eee;
+    position: relative;
+}
+
+.week-column.today {
+    background-color: #f9fcff;
+}
+
+.hour-slot {
+    height: 60px;
+    border-bottom: 1px solid #f0f0f0;
+    position: relative;
+}
+
+.half-hour-slot {
+    height: 30px;
+    border-bottom: 1px dashed #f5f5f5;
+}
+
+.current-time-indicator {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #ff5555;
+    z-index: 10;
+}
+
+.current-time-indicator::before {
+    content: "";
+    position: absolute;
+    left: -5px;
+    top: -4px;
+    width: 10px;
+    height: 10px;
+    background-color: #ff5555;
+    border-radius: 50%;
+}
+
+.week-event {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    z-index: 5;
+    color: white;
+    transition: transform 0.2s;
+}
+
+.week-event:hover {
+    transform: scale(1.02);
+    z-index: 10;
+}
+
+/* Day View */
+#day-view {
+    flex-direction: row;
+}
+
+.day-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.day-header {
+    height: 50px;
+    border-bottom: 1px solid #eee;
+    text-align: center;
+    padding: 15px;
+    font-weight: bold;
+}
+
+.day-grid {
+    flex: 1;
+    position: relative;
+}
+
+.day-event {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    z-index: 5;
+    color: white;
+    transition: transform 0.2s;
+}
+
+.day-event:hover {
+    transform: scale(1.02);
+    z-index: 10;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 500px;
+    overflow: hidden;
+}
+
+.modal-header {
+    padding: 15px 20px;
+    background-color: #1e3a8a;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+/* Additional CSS for settings icon */
+.settings-li {
+    margin-top: auto !important;
+    margin-bottom: 30px !important;
+}
+
+.sidebar-main nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+}
+
+.sidebar-main nav ul li a i.fa-cog {
+    font-size: 40px;
+    color: #333;
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.sidebar-main nav ul li a i.fa-cog:hover {
+    transform: rotate(90deg) scale(1.1);
+}
+
+/* This is just the additional CSS to add to your existing CSS file */
