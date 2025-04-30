@@ -1,8 +1,11 @@
 /* Import Google Font */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 
-padding: 0;
-box-sizing: border-box;
+/* Global Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
@@ -22,11 +25,13 @@ body {
     border-radius: 15px;
     box-shadow: 0px 6px 20px rgba(0, 0, 0, 0.3);
     max-width: 800px;
+    width: 100%;
     overflow: hidden;
 }
 
 /* Sections */
-.login-section, .welcome-section {
+.login-section,
+.welcome-section {
     flex: 1;
     padding: 40px;
     text-align: center;
@@ -37,8 +42,6 @@ body {
     background: #ffffff;
 }
 
-
-
 /* Right: Welcome Section with Background Image */
 .welcome-section {
     background: url('board1.png') no-repeat center center/cover;
@@ -47,9 +50,6 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    text-align: center;
-    padding: 40px;
-    width: 50%;
     position: relative;
 }
 
@@ -66,7 +66,8 @@ body {
 }
 
 /* Ensure text is above the overlay */
-.welcome-section h2, .welcome-section p {
+.welcome-section h2,
+.welcome-section p {
     position: relative;
     z-index: 2;
 }
@@ -224,6 +225,10 @@ p a:hover {
     .login-section {
         border-right: none;
         border-bottom: 2px solid #ddd;
+    }
+
+    .welcome-section {
+        display: none;
     }
 
     .auth-section {
