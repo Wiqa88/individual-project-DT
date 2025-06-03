@@ -3,7 +3,7 @@ const axios = require('axios');
 const path = require('path');
 const session = require('express-session');
 const app = express();
-const PORT = 3000;
+const PORT = 63342;
 
 // Add session support to store tokens
 app.use(session({
@@ -17,7 +17,7 @@ app.use(express.static(path.join(__dirname)));
 
 // Google OAuth configuration
 const GOOGLE_CLIENT_ID = '233840126993-uned9hu7bedgpnursvggctc8c0qvussl.apps.googleusercontent.com';
-const GOOGLE_CLIENT_SECRET = 'YOUR_CLIENT_SECRET'; // You need to add your client secret here
+const GOOGLE_CLIENT_SECRET = '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'; // You need to add your client secret here
 const REDIRECT_URI = `http://localhost:${PORT}/auth/google/callback`;
 
 // OAuth callback route

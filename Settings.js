@@ -492,6 +492,10 @@ function toggleGoogleCalendarSync(enabled) {
     }
 }
 
+// Add this line to your server.js file
+app.use(express.static(path.join(__dirname)));
+
+
 function updateGoogleConnectionStatus(connected) {
     const connectBtn = document.getElementById('google-connect-btn');
 
