@@ -384,6 +384,7 @@ function renderMonthView() {
         monthGrid.appendChild(dayElement);
     }
 }
+// Replace the renderWeekView and renderDayView functions in your Cal.js with these improved versions
 
 function renderWeekView() {
     console.log('📅 Rendering week view...');
@@ -451,12 +452,14 @@ function renderWeekView() {
             dayColumn.appendChild(timeIndicator);
         }
 
-        // Add events to the day column
+        // Get events for this day and calculate positions with overlap handling
         const dayFormatted = formatDate(dayDate);
         const dayEvents = getEventsForDay(dayFormatted);
+        const positionedEvents = calculateEventPositions(dayEvents, false); // false = week view
 
-        dayEvents.forEach(event => {
-            const eventElement = createWeekDayEvent(event);
+        // Add positioned events to the day column
+        positionedEvents.forEach(eventData => {
+            const eventElement = createWeekDayEvent(eventData.event, false, eventData.position);
             if (eventElement) {
                 dayColumn.appendChild(eventElement);
             }
@@ -522,16 +525,208 @@ function renderDayView() {
         dayGrid.appendChild(timeIndicator);
     }
 
-    // Add events to the day
+    // Get events for this day and calculate positions with overlap handling
     const dayFormatted = formatDate(currentDate);
     const dayEvents = getEventsForDay(dayFormatted);
+    const positionedEvents = calculateEventPositions(dayEvents, true); // true = day view
 
-    dayEvents.forEach(event => {
-        const eventElement = createWeekDayEvent(event, true);
+    // Add positioned events to the day grid
+    positionedEvents.forEach(eventData => {
+        const eventElement = createWeekDayEvent(eventData.event, true, eventData.position);
         if (eventElement) {
             dayGrid.appendChild(eventElement);
         }
     });
+}
+
+// New function to calculate event positions to prevent overlaps
+function calculateEventPositions(events, isDayView) {
+    // Filter out all-day events and sort timed events by start time
+    const timedEvents = events.filter(event => event.time).sort((a, b) => {
+        const timeA = a.time.split(':').map(Number);
+        const timeB = b.time.split(':').map(Number);
+        return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
+    });
+
+    const allDayEvents = events.filter(event => !event.time);
+
+    // Calculate overlapping groups
+    const eventGroups = [];
+
+    timedEvents.forEach(event => {
+        const eventStart = getEventMinutes(event.time);
+        const eventEnd = getEventMinutes(event.endTime) || (eventStart + 60); // Default 1 hour if no end time
+
+        // Find which group this event belongs to (based on overlaps)
+        let addedToGroup = false;
+
+        for (let group of eventGroups) {
+            // Check if this event overlaps with any event in this group
+            const overlaps = group.some(groupEvent => {
+                const groupStart = getEventMinutes(groupEvent.event.time);
+                const groupEnd = getEventMinutes(groupEvent.event.endTime) || (groupStart + 60);
+
+                return (eventStart < groupEnd && eventEnd > groupStart);
+            });
+
+            if (overlaps) {
+                group.push({ event, start: eventStart, end: eventEnd });
+                addedToGroup = true;
+                break;
+            }
+        }
+
+        // If no overlapping group found, create a new group
+        if (!addedToGroup) {
+            eventGroups.push([{ event, start: eventStart, end: eventEnd }]);
+        }
+    });
+
+    // Calculate positions for each group
+    const positionedEvents = [];
+
+    // Add all-day events first
+    allDayEvents.forEach((event, index) => {
+        positionedEvents.push({
+            event,
+            position: {
+                column: 0,
+                totalColumns: 1,
+                isAllDay: true,
+                allDayIndex: index
+            }
+        });
+    });
+
+    // Add timed events with calculated positions
+    eventGroups.forEach(group => {
+        const groupSize = group.length;
+
+        // Sort events in group by start time, then by end time
+        group.sort((a, b) => {
+            if (a.start === b.start) {
+                return a.end - b.end;
+            }
+            return a.start - b.start;
+        });
+
+        // Assign column positions within the group
+        group.forEach((eventData, index) => {
+            positionedEvents.push({
+                event: eventData.event,
+                position: {
+                    column: index,
+                    totalColumns: groupSize,
+                    isAllDay: false
+                }
+            });
+        });
+    });
+
+    return positionedEvents;
+}
+
+// Helper function to convert time string to minutes since midnight
+function getEventMinutes(timeString) {
+    if (!timeString) return null;
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+// Updated createWeekDayEvent function to handle positioning
+function createWeekDayEvent(event, isDayView = false, position = null) {
+    if (!event.time || (position && position.isAllDay)) {
+        // All-day event - show at top
+        const eventElement = document.createElement('div');
+        eventElement.className = isDayView ? 'day-event all-day' : 'week-event all-day';
+        eventElement.textContent = event.title;
+
+        const topOffset = position && position.allDayIndex ? position.allDayIndex * 25 : 0;
+        eventElement.style.top = `${5 + topOffset}px`;
+        eventElement.style.height = '20px';
+        eventElement.style.backgroundColor = getListColor(event.list);
+        eventElement.style.color = 'white';
+        eventElement.style.fontSize = isDayView ? '14px' : '12px';
+        eventElement.style.padding = '2px 6px';
+        eventElement.style.borderRadius = '3px';
+        eventElement.style.cursor = 'pointer';
+        eventElement.style.position = 'absolute';
+        eventElement.style.left = isDayView ? '10px' : '2px';
+        eventElement.style.right = isDayView ? '10px' : '2px';
+        eventElement.style.zIndex = '6';
+        eventElement.style.overflow = 'hidden';
+        eventElement.style.textOverflow = 'ellipsis';
+        eventElement.style.whiteSpace = 'nowrap';
+
+        eventElement.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showEventDetails(event);
+        });
+
+        return eventElement;
+    }
+
+    // Timed event
+    const [hours, minutes] = event.time.split(':').map(Number);
+    const endHours = event.endTime ? parseInt(event.endTime.split(':')[0]) : hours + 1;
+    const endMinutes = event.endTime ? parseInt(event.endTime.split(':')[1]) : minutes;
+
+    // Calculate position and height
+    const topPosition = (hours * 60 + minutes) * (60 / 60); // 60px per hour
+    const duration = Math.max(((endHours * 60 + endMinutes) - (hours * 60 + minutes)) * (60 / 60), 30);
+
+    const eventElement = document.createElement('div');
+    eventElement.className = isDayView ? 'day-event' : 'week-event';
+    eventElement.textContent = event.title;
+    eventElement.style.top = `${topPosition}px`;
+    eventElement.style.height = `${duration}px`;
+    eventElement.style.backgroundColor = getListColor(event.list);
+    eventElement.style.color = 'white';
+    eventElement.style.fontSize = isDayView ? '14px' : '12px';
+    eventElement.style.padding = isDayView ? '4px 8px' : '2px 6px';
+    eventElement.style.borderRadius = '4px';
+    eventElement.style.cursor = 'pointer';
+    eventElement.style.position = 'absolute';
+    eventElement.style.zIndex = '5';
+    eventElement.style.overflow = 'hidden';
+    eventElement.style.textOverflow = 'ellipsis';
+    eventElement.style.whiteSpace = 'nowrap';
+
+    // Apply positioning if provided (for handling overlaps)
+    if (position && !position.isAllDay) {
+        const columnWidth = 100 / position.totalColumns;
+        const leftOffset = columnWidth * position.column;
+
+        eventElement.style.left = `${leftOffset}%`;
+        eventElement.style.width = `${columnWidth - 1}%`; // -1% for small gap between events
+        eventElement.style.right = 'auto';
+    } else {
+        // Default positioning
+        eventElement.style.left = isDayView ? '10px' : '2px';
+        eventElement.style.right = isDayView ? '10px' : '2px';
+    }
+
+    // Set priority border if applicable
+    if (event.priority) {
+        switch(event.priority) {
+            case 'high':
+                eventElement.style.borderLeft = '3px solid #ff5555';
+                break;
+            case 'medium':
+                eventElement.style.borderLeft = '3px solid #ffa500';
+                break;
+            case 'low':
+                eventElement.style.borderLeft = '3px solid #3498db';
+                break;
+        }
+    }
+
+    eventElement.addEventListener('click', function(e) {
+        e.stopPropagation();
+        showEventDetails(event);
+    });
+
+    return eventElement;
 }
 
 function renderMiniCalendar() {
