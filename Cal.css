@@ -43,6 +43,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    height: 100vh;
 }
 
 .sidebar-main nav ul li {
@@ -276,6 +277,22 @@
     background-color: #1e3a8a;
 }
 
+/* Additional CSS for settings icon */
+.settings-li {
+    margin-top: auto !important;
+    margin-bottom: 30px !important;
+}
+
+.sidebar-main nav ul li a i.fa-cog {
+    font-size: 40px;
+    color: #333;
+    transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.sidebar-main nav ul li a i.fa-cog:hover {
+    transform: rotate(90deg) scale(1.1);
+}
+
 /* Main Content */
 main {
     flex: 1;
@@ -351,6 +368,7 @@ main {
     overflow: hidden;
     background-color: white;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    height: calc(100vh - 120px);
 }
 
 /* Calendar Views */
@@ -394,10 +412,11 @@ main {
 .calendar-day {
     border-right: 1px solid #eee;
     border-bottom: 1px solid #eee;
-    padding: 8px;
+    padding: 4px;
     position: relative;
     min-height: 100px;
     overflow: hidden;
+    cursor: pointer;
 }
 
 .calendar-day:hover {
@@ -406,7 +425,7 @@ main {
 
 .day-number {
     font-size: 14px;
-    margin-bottom: 5px;
+    margin-bottom: 2px;
     font-weight: bold;
     color: #333;
 }
@@ -430,121 +449,191 @@ main {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    margin-top: 2px;
 }
 
 .event {
-    padding: 4px 6px;
-    border-radius: 4px;
-    font-size: 12px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 11px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     cursor: pointer;
     margin-bottom: 2px;
-    position: relative;
     color: white;
     transition: transform 0.2s;
 }
 
 .event:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-.event.personal {
-    background-color: #3498db;
+/* More Events Indicator */
+.more-events {
+    font-size: 10px;
+    color: #666;
+    cursor: pointer;
+    padding: 1px 4px;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+    text-align: center;
 }
 
-.event.work {
-    background-color: #e74c3c;
+.more-events:hover {
+    background-color: #e9ecef;
 }
 
-.event.shopping {
-    background-color: #2ecc71;
-}
-
-/* Week View */
-#week-view {
+/* Week and Day Views - Updated Layout */
+#week-view,
+#day-view {
+    display: flex;
     flex-direction: row;
+    height: 100%;
+    overflow: hidden;
 }
 
+/* Calendar Content (for week and day views) */
+.week-container,
+.day-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Time Labels Container - Now positioned on the RIGHT */
 .time-labels {
-    width: 60px;
-    border-right: 1px solid #eee;
-    padding-top: 50px; /* Match the height of the day headers */
+    width: 80px;
+    border-left: 1px solid #eee;
+    background-color: #f8f9fa;
+    position: relative;
+    flex-shrink: 0;
+    order: 2; /* This moves it to the right */
 }
 
+/* Individual Time Labels */
 .time-label {
     height: 60px;
     display: flex;
     align-items: flex-start;
-    justify-content: flex-end;
-    padding-right: 10px;
-    font-size: 12px;
+    justify-content: flex-start;
+    padding-left: 8px;
+    padding-top: 4px;
+    font-size: 11px;
     color: #777;
     position: relative;
+    border-bottom: 1px solid #f0f0f0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    letter-spacing: 0.5px;
 }
 
-.time-label::after {
+/* Add tick marks for time labels */
+.time-label::before {
     content: "";
     position: absolute;
     top: 0;
-    right: 0;
+    left: 0;
     width: 5px;
     height: 1px;
     background-color: #ddd;
 }
 
-.week-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+/* Special styling for noon and midnight */
+.time-label:nth-child(1),  /* 12 AM */
+.time-label:nth-child(13) { /* 12 PM */
+    font-weight: bold;
+    color: #555;
 }
 
+/* Week View */
 .week-header {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     height: 50px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 2px solid #eee;
+    background-color: #f8f9fa;
 }
 
 .day-header {
     text-align: center;
-    padding: 15px;
+    padding: 15px 5px;
     font-weight: bold;
     border-right: 1px solid #eee;
+    font-size: 14px;
+    color: #333;
 }
 
 .day-header.today {
-    background-color: #f0f4ff;
+    background-color: #e3f2fd;
+    color: #1e3a8a;
 }
 
 .week-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     flex: 1;
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
 }
 
 .week-column {
-    border-right: 1px solid #eee;
+    border-right: 1px solid #e0e0e0;
     position: relative;
+    min-height: 1440px; /* 24 hours * 60px per hour */
+}
+
+.week-column:last-child {
+    border-right: none;
 }
 
 .week-column.today {
     background-color: #f9fcff;
 }
 
+/* Day View */
+.day-grid {
+    flex: 1;
+    position: relative;
+    min-height: 1440px; /* 24 hours * 60px per hour */
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
+}
+
+.day-grid.today {
+    background-color: #f9fcff;
+}
+
+/* Hour Slots */
 .hour-slot {
     height: 60px;
     border-bottom: 1px solid #f0f0f0;
     position: relative;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    z-index: 1;
 }
 
-.half-hour-slot {
-    height: 30px;
-    border-bottom: 1px dashed #f5f5f5;
+.hour-slot:hover {
+    background-color: rgba(30, 58, 138, 0.08);
 }
 
+/* Visual feedback for event creation areas */
+.week-column:hover .hour-slot:hover::after {
+    content: "+";
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #1e3a8a;
+    font-weight: bold;
+    font-size: 16px;
+    opacity: 0.7;
+}
+
+/* Current time indicator */
 .current-time-indicator {
     position: absolute;
     left: 0;
@@ -552,6 +641,7 @@ main {
     height: 2px;
     background-color: #ff5555;
     z-index: 10;
+    border-top: 2px solid #ff5555;
 }
 
 .current-time-indicator::before {
@@ -565,69 +655,122 @@ main {
     border-radius: 50%;
 }
 
-.week-event {
+/* Event Styling for Week and Day Views */
+.week-event,
+.day-event {
     position: absolute;
-    left: 2px;
-    right: 2px;
     border-radius: 4px;
-    padding: 2px 5px;
+    color: white !important;
     font-size: 12px;
+    padding: 2px 6px;
     overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     z-index: 5;
-    color: white;
-    transition: transform 0.2s;
-}
-
-.week-event:hover {
-    transform: scale(1.02);
-    z-index: 10;
-}
-
-/* Day View */
-#day-view {
-    flex-direction: row;
-}
-
-.day-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.day-header {
-    height: 50px;
-    border-bottom: 1px solid #eee;
-    text-align: center;
-    padding: 15px;
-    font-weight: bold;
-}
-
-.day-grid {
-    flex: 1;
-    position: relative;
+    min-height: 20px;
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    margin-right: 1px;
 }
 
 .day-event {
-    position: absolute;
-    left: 10px;
-    right: 10px;
-    border-radius: 4px;
-    padding: 5px 10px;
     font-size: 14px;
-    overflow: hidden;
-    cursor: pointer;
-    z-index: 5;
-    color: white;
-    transition: transform 0.2s;
+    padding: 4px 8px;
+    min-height: 30px;
+    margin-right: 2px;
 }
 
+/* Hover effects */
+.week-event:hover,
 .day-event:hover {
+    z-index: 15 !important;
     transform: scale(1.02);
-    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-/* Modal */
+/* All-day events */
+.week-event.all-day,
+.day-event.all-day {
+    top: 5px !important;
+    height: 20px !important;
+    font-size: 11px;
+    z-index: 6 !important;
+    margin-bottom: 2px;
+}
+
+/* Improve event contrast when they're narrow */
+.week-event[style*="width: 50%"],
+.week-event[style*="width: 33%"],
+.week-event[style*="width: 25%"] {
+    font-size: 10px !important;
+    padding: 1px 3px !important;
+}
+
+.day-event[style*="width: 50%"],
+.day-event[style*="width: 33%"],
+.day-event[style*="width: 25%"] {
+    font-size: 12px !important;
+    padding: 2px 4px !important;
+}
+
+/* When events are very narrow, show abbreviated text */
+.week-event[style*="width: 25%"],
+.week-event[style*="width: 33%"] {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Add a small indicator for very narrow events */
+.week-event[style*="width: 25%"]::before,
+.week-event[style*="width: 33%"]::before {
+    content: "•";
+    margin-right: 2px;
+    font-weight: bold;
+}
+
+/* Improve readability for short events */
+.week-event[style*="height: 30px"],
+.day-event[style*="height: 30px"] {
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+}
+
+/* Add a tooltip-like effect for very narrow events */
+.week-event[style*="width: 25%"]:hover,
+.week-event[style*="width: 33%"]:hover {
+    width: auto !important;
+    min-width: 120px !important;
+    white-space: normal !important;
+    z-index: 20 !important;
+}
+
+/* Default list colors for events */
+.event.personal,
+.week-event.personal,
+.day-event.personal {
+    background-color: #3498db !important;
+}
+
+.event.work,
+.week-event.work,
+.day-event.work {
+    background-color: #e74c3c !important;
+}
+
+.event.shopping,
+.week-event.shopping,
+.day-event.shopping {
+    background-color: #2ecc71 !important;
+}
+
+/* Modal Styles */
 .modal {
     display: none;
     position: fixed;
@@ -647,7 +790,8 @@ main {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
     width: 100%;
     max-width: 500px;
-    overflow: hidden;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .modal-header {
@@ -673,211 +817,232 @@ main {
     transition: transform 0.2s;
 }
 
-/* Additional CSS for settings icon */
-.settings-li {
-    margin-top: auto !important;
-    margin-bottom: 30px !important;
+.close-modal:hover {
+    transform: scale(1.1);
 }
 
-.sidebar-main nav ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    background-color: #f8f9fa;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    height: 100vh;
+    justify-content: flex-end;
+    gap: 10px;
 }
 
-.sidebar-main nav ul li a i.fa-cog {
-    font-size: 40px;
+/* Form Styles */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
     color: #333;
-    transition: transform 0.3s ease, color 0.3s ease;
 }
 
-.sidebar-main nav ul li a i.fa-cog:hover {
-    transform: rotate(90deg) scale(1.1);
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.2s;
 }
 
-/* Add this CSS to your Cal.css file for better list color support */
-
-/* Default list colors for events */
-.event.personal,
-.week-event.personal,
-.day-event.personal {
-    background-color: #3498db !important;
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #1e3a8a;
+    box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1);
 }
 
-.event.work,
-.week-event.work,
-.day-event.work {
-    background-color: #e74c3c !important;
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
 }
 
-.event.shopping,
-.week-event.shopping,
-.day-event.shopping {
-    background-color: #2ecc71 !important;
+.form-row {
+    display: flex;
+    gap: 15px;
 }
 
-/* Add this CSS to your Cal.css file for better overlap handling */
-
-/* Overlapping Events Improvements */
-.week-event,
-.day-event {
-    /* Ensure events don't interfere with each other */
-    box-sizing: border-box;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+.form-row .form-group {
+    flex: 1;
 }
 
-/* When events are positioned side by side, add a small margin */
-.week-event {
-    margin-right: 1px;
+/* Toggle Switch for "Add as Task" */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
 }
 
-.day-event {
-    margin-right: 2px;
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
 }
 
-/* Improve visibility when events overlap */
-.week-event:hover,
-.day-event:hover {
-    z-index: 15 !important;
-    transform: scale(1.02);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+.toggle-switch label {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
 }
 
-/* All-day events should not interfere with timed events */
-.week-event.all-day,
-.day-event.all-day {
-    z-index: 6 !important;
-    margin-bottom: 2px;
+.toggle-switch label:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
 }
 
-/* Make sure overlapping events are still readable */
-.week-event {
-    font-weight: 500;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+.toggle-switch input:checked + label {
+    background-color: #1e3a8a;
 }
 
-.day-event {
-    font-weight: 500;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+.toggle-switch input:checked + label:before {
+    transform: translateX(26px);
 }
 
-/* Improve event contrast when they're narrow */
-.week-event[style*="width: 50%"],
-.week-event[style*="width: 33%"],
-.week-event[style*="width: 25%"] {
-    font-size: 10px !important;
-    padding: 1px 3px !important;
+/* Button Styles */
+#save-event,
+#cancel-event,
+#delete-event,
+#edit-event {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
 }
 
-.day-event[style*="width: 50%"],
-.day-event[style*="width: 33%"],
-.day-event[style*="width: 25%"] {
-    font-size: 12px !important;
-    padding: 2px 4px !important;
+#save-event {
+    background-color: #1e3a8a;
+    color: white;
 }
 
-/* Add a subtle gradient to make overlapping events more distinguishable */
-.week-event {
-    background: linear-gradient(135deg, var(--event-color, #3498db) 0%, var(--event-color, #3498db) 85%, rgba(255,255,255,0.1) 100%);
+#save-event:hover {
+    background-color: #162d6a;
 }
 
-.day-event {
-    background: linear-gradient(135deg, var(--event-color, #3498db) 0%, var(--event-color, #3498db) 85%, rgba(255,255,255,0.1) 100%);
+#cancel-event {
+    background-color: #6c757d;
+    color: white;
 }
 
-/* When events are very narrow, show abbreviated text */
-.week-event[style*="width: 25%"] {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+#cancel-event:hover {
+    background-color: #5a6268;
 }
 
-.week-event[style*="width: 33%"] {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+#delete-event {
+    background-color: #dc3545;
+    color: white;
 }
 
-/* Add a small indicator for very narrow events */
-.week-event[style*="width: 25%"]::before,
-.week-event[style*="width: 33%"]::before {
-    content: "•";
-    margin-right: 2px;
-    font-weight: bold;
+#delete-event:hover {
+    background-color: #c82333;
 }
 
-/* Ensure proper stacking order */
-.hour-slot {
-    z-index: 1;
+#edit-event {
+    background-color: #28a745;
+    color: white;
 }
 
-.week-event,
-.day-event {
-    z-index: 5;
+#edit-event:hover {
+    background-color: #218838;
 }
 
-.week-event.all-day,
-.day-event.all-day {
-    z-index: 6;
-}
-
-.week-event:hover,
-.day-event:hover {
-    z-index: 15;
-}
-
-.current-time-indicator {
-    z-index: 10;
-}
-
-/* Improve readability for short events */
-.week-event[style*="height: 30px"],
-.day-event[style*="height: 30px"] {
-    line-height: 1.2;
+/* Event Details Modal */
+.event-detail {
     display: flex;
     align-items: center;
+    margin-bottom: 10px;
+    padding: 8px 0;
 }
 
-/* Add a tooltip-like effect for very narrow events */
-.week-event[style*="width: 25%"]:hover,
-.week-event[style*="width: 33%"]:hover {
-    width: auto !important;
-    min-width: 120px !important;
-    white-space: normal !important;
-    z-index: 20 !important;
-}
-
-/* Improve the visual separation between columns */
-.week-column {
-    border-right: 1px solid #e0e0e0;
-}
-
-.week-column:last-child {
-    border-right: none;
-}
-
-/* Add subtle hover effect to time slots to show they're clickable */
-.hour-slot:hover {
-    background-color: rgba(30, 58, 138, 0.08);
-    cursor: pointer;
-}
-
-/* Visual feedback for event creation areas */
-.week-column:hover .hour-slot:hover::after {
-    content: "+";
-    position: absolute;
-    right: 5px;
-    top: 50%;
-    transform: translateY(-50%);
+.event-detail i {
+    width: 20px;
+    margin-right: 10px;
     color: #1e3a8a;
-    font-weight: bold;
-    font-size: 16px;
-    opacity: 0.7;
 }
 
+.event-description {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
 
-/* This is just the additional CSS to add to your existing CSS file */
+/* Responsive Design */
+@media (max-width: 768px) {
+    .time-labels {
+        width: 50px;
+    }
+
+    .time-label {
+        font-size: 9px;
+        padding-left: 4px;
+    }
+
+    .calendar-navigation h1 {
+        font-size: 18px;
+    }
+
+    .view-options {
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .view-option {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .modal-content {
+        margin: 10px;
+        max-width: calc(100% - 20px);
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    main {
+        margin-left: 0;
+        padding: 10px;
+    }
+
+    .left-column {
+        position: relative;
+        width: 100%;
+        height: auto;
+    }
+
+    .container {
+        flex-direction: column;
+        height: auto;
+    }
+}
