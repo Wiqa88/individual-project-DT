@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendar</title>
+    <title>Calendar & Pomodoro</title>
     <link rel="stylesheet" href="Cal.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -17,112 +17,204 @@
                 <ul>
                     <li><a href="todo.html"><img src="note.png" alt="To-Do"></a></li>
                     <li><a href="Cal.html"><img src="calendar.png" alt="Calendar"></a></li>
-                    <li><a href="#"><img src="clock.png" alt="Pomodoro"></a></li>
+                    <li><a href="#" id="pomodoro-link"><img src="clock.png" alt="Pomodoro"></a></li>
                     <li><a href="#"><img src="matrix.png" alt="Eisenhower Matrix"></a></li>
                     <li><a href="#"><img src="habits.png" alt="Habits"></a></li>
                     <!-- Settings icon added to the bottom -->
                     <li class="settings-li"><a href="Settings.html"><i class="fas fa-cog"></i></a></li>
-
                 </ul>
             </nav>
         </div>
 
         <div class="sidebar-left">
-            <div class="menu">
-                <a href="#" id="add-event-link"><i class="fas fa-plus-circle"></i> Add Event</a>
-                <a href="#"><i class="fas fa-search"></i> Search</a>
-                <a href="#" id="week-link"><i class="fas fa-calendar-week"></i> Week View</a>
-                <a href="#" id="month-link"><i class="fas fa-calendar-alt"></i> Month View</a>
+            <!-- Calendar Sidebar -->
+            <div id="calendar-sidebar" class="sidebar-content">
+                <div class="menu">
+                    <a href="#" id="add-event-link"><i class="fas fa-plus-circle"></i> Add Event</a>
+                    <a href="#"><i class="fas fa-search"></i> Search</a>
+                    <a href="#" id="week-link"><i class="fas fa-calendar-week"></i> Week View</a>
+                    <a href="#" id="month-link"><i class="fas fa-calendar-alt"></i> Month View</a>
+                </div>
+
+                <div class="separator-line"></div>
+
+                <div class="menu">
+                    <div class="lists-header">
+                        <span>Lists</span>
+                        <button id="add-list-btn" title="Add New List"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div id="lists-container">
+                        <!-- Lists will be dynamically added here -->
+                    </div>
+                </div>
+
+                <div class="separator-line"></div>
+
+                <div class="mini-calendar">
+                    <div class="mini-calendar-header">
+                        <button id="prev-month-btn"><i class="fas fa-chevron-left"></i></button>
+                        <h3 id="mini-calendar-title">April 2025</h3>
+                        <button id="next-month-btn"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="mini-calendar-weekdays">
+                        <span>Su</span>
+                        <span>Mo</span>
+                        <span>Tu</span>
+                        <span>We</span>
+                        <span>Th</span>
+                        <span>Fr</span>
+                        <span>Sa</span>
+                    </div>
+                    <div class="mini-calendar-days" id="mini-calendar-days">
+                        <!-- Days will be added dynamically -->
+                    </div>
+                </div>
             </div>
 
-            <div class="separator-line"></div>
+            <!-- Pomodoro Sidebar -->
+            <div id="pomodoro-sidebar" class="sidebar-content" style="display: none;">
+                <div class="menu">
+                    <a href="#" id="back-to-calendar"><i class="fas fa-arrow-left"></i> Back to Calendar</a>
+                </div>
 
-            <div class="menu">
-                <div class="lists-header">
-                    <span>Lists</span>
-                    <button id="add-list-btn" title="Add New List"><i class="fas fa-plus"></i></button>
-                </div>
-                <div id="lists-container">
-                    <!-- Lists will be dynamically added here -->
-                </div>
-            </div>
+                <div class="separator-line"></div>
 
-            <div class="separator-line"></div>
+                <div class="pomodoro-controls">
+                    <h3>Pomodoro Settings</h3>
 
-            <div class="mini-calendar">
-                <div class="mini-calendar-header">
-                    <button id="prev-month-btn"><i class="fas fa-chevron-left"></i></button>
-                    <h3 id="mini-calendar-title">April 2025</h3>
-                    <button id="next-month-btn"><i class="fas fa-chevron-right"></i></button>
-                </div>
-                <div class="mini-calendar-weekdays">
-                    <span>Su</span>
-                    <span>Mo</span>
-                    <span>Tu</span>
-                    <span>We</span>
-                    <span>Th</span>
-                    <span>Fr</span>
-                    <span>Sa</span>
-                </div>
-                <div class="mini-calendar-days" id="mini-calendar-days">
-                    <!-- Days will be added dynamically -->
+                    <div class="time-setting">
+                        <label>Work Time (minutes):</label>
+                        <input type="number" id="work-time" value="25" min="1" max="60">
+                    </div>
+
+                    <div class="time-setting">
+                        <label>Short Break (minutes):</label>
+                        <input type="number" id="short-break" value="5" min="1" max="30">
+                    </div>
+
+                    <div class="time-setting">
+                        <label>Long Break (minutes):</label>
+                        <input type="number" id="long-break" value="15" min="1" max="60">
+                    </div>
+
+                    <div class="separator-line"></div>
+
+                    <div class="session-info">
+                        <p>Session: <span id="current-session">1</span> / 4</p>
+                        <p>Mode: <span id="current-mode">Work</span></p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <main>
-        <div class="calendar-header">
-            <div class="calendar-navigation">
-                <button id="prev-period"><i class="fas fa-chevron-left"></i></button>
-                <h1 id="calendar-title">April 2025</h1>
-                <button id="next-period"><i class="fas fa-chevron-right"></i></button>
-            </div>
-            <div class="view-options">
-                <!-- REMOVE THIS LINE: <button class="view-option" data-view="day">Day</button> -->
-                <button class="view-option" data-view="week">Week</button>
-                <button class="view-option active" data-view="month">Month</button>
-            </div>
-        </div>
-
-        <!-- Calendar Views -->
-        <div class="calendar-container">
-            <!-- Month View -->
-            <div id="month-view" class="calendar-view active">
-                <div class="calendar-weekdays">
-                    <div>Sunday</div>
-                    <div>Monday</div>
-                    <div>Tuesday</div>
-                    <div>Wednesday</div>
-                    <div>Thursday</div>
-                    <div>Friday</div>
-                    <div>Saturday</div>
+        <!-- Calendar Content -->
+        <div id="calendar-content" class="main-content">
+            <div class="calendar-header">
+                <div class="calendar-navigation">
+                    <button id="prev-period"><i class="fas fa-chevron-left"></i></button>
+                    <h1 id="calendar-title">April 2025</h1>
+                    <button id="next-period"><i class="fas fa-chevron-right"></i></button>
                 </div>
-                <div class="calendar-grid" id="month-grid">
-                    <!-- Calendar days will be added dynamically -->
+                <div class="view-options">
+                    <button class="view-option" data-view="week">Week</button>
+                    <button class="view-option active" data-view="month">Month</button>
                 </div>
             </div>
 
-            <!-- Week View -->
-            <div id="week-view" class="calendar-view">
-                <div class="time-labels">
-                    <div class="time-labels-scroll" id="week-time-labels">
-                        <!-- Time labels will be created dynamically -->
+            <!-- Calendar Views -->
+            <div class="calendar-container">
+                <!-- Month View -->
+                <div id="month-view" class="calendar-view active">
+                    <div class="calendar-weekdays">
+                        <div>Sunday</div>
+                        <div>Monday</div>
+                        <div>Tuesday</div>
+                        <div>Wednesday</div>
+                        <div>Thursday</div>
+                        <div>Friday</div>
+                        <div>Saturday</div>
+                    </div>
+                    <div class="calendar-grid" id="month-grid">
+                        <!-- Calendar days will be added dynamically -->
                     </div>
                 </div>
-                <div class="week-container">
-                    <div class="week-header" id="week-header">
-                        <!-- Day headers will be added dynamically -->
+
+                <!-- Week View -->
+                <div id="week-view" class="calendar-view">
+                    <div class="time-labels">
+                        <div class="time-labels-scroll" id="week-time-labels">
+                            <!-- Time labels will be created dynamically -->
+                        </div>
                     </div>
-                    <div class="week-grid-container" id="week-grid-container">
-                        <div class="week-grid" id="week-grid">
-                            <!-- Week grid will be added dynamically -->
+                    <div class="week-container">
+                        <div class="week-header" id="week-header">
+                            <!-- Day headers will be added dynamically -->
+                        </div>
+                        <div class="week-grid-container" id="week-grid-container">
+                            <div class="week-grid" id="week-grid">
+                                <!-- Week grid will be added dynamically -->
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
+        <!-- Pomodoro Content -->
+        <div id="pomodoro-content" class="main-content" style="display: none;">
+            <div class="pomodoro-header">
+                <h1>Pomodoro Timer</h1>
+            </div>
 
+            <div class="pomodoro-timer">
+                <div class="timer-circle">
+                    <svg class="progress-ring" width="300" height="300">
+                        <circle class="progress-ring-circle"
+                                stroke="#e0e0e0"
+                                stroke-width="8"
+                                fill="transparent"
+                                r="140"
+                                cx="150"
+                                cy="150"/>
+                        <circle class="progress-ring-progress"
+                                stroke="#1e3a8a"
+                                stroke-width="8"
+                                fill="transparent"
+                                r="140"
+                                cx="150"
+                                cy="150"/>
+                    </svg>
+                    <div class="timer-display">
+                        <div class="time-left" id="time-display">25:00</div>
+                        <div class="timer-mode" id="timer-mode">Work Time</div>
+                    </div>
+                </div>
+
+                <div class="timer-controls">
+                    <button id="start-timer" class="timer-btn primary">
+                        <i class="fas fa-play"></i> Start
+                    </button>
+                    <button id="pause-timer" class="timer-btn" style="display: none;">
+                        <i class="fas fa-pause"></i> Pause
+                    </button>
+                    <button id="reset-timer" class="timer-btn">
+                        <i class="fas fa-redo"></i> Reset
+                    </button>
+                </div>
+
+                <div class="pomodoro-stats">
+                    <div class="stat-box">
+                        <div class="stat-number" id="completed-sessions">0</div>
+                        <div class="stat-label">Completed Sessions</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number" id="total-time">0h 0m</div>
+                        <div class="stat-label">Total Focus Time</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 </div>
@@ -230,9 +322,6 @@
         </div>
     </div>
 </div>
-
-
-
 
 <script src="Cal.js"></script>
 </body>

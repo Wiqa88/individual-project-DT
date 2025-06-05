@@ -304,6 +304,11 @@ main {
     height: 100vh;
 }
 
+.main-content {
+    width: 100%;
+    height: 100%;
+}
+
 /* Calendar Header */
 .calendar-header {
     display: flex;
@@ -378,7 +383,7 @@ main {
 }
 
 .calendar-view.active {
-    display: flex !important; /* Add !important temporarily */
+    display: flex !important;
     flex-direction: column;
 }
 
@@ -485,7 +490,7 @@ main {
     background-color: #e9ecef;
 }
 
-/* Week and Day Views - Updated Layout */
+/* Week and Day Views */
 #week-view,
 #day-view {
     display: flex;
@@ -494,7 +499,6 @@ main {
     overflow: hidden;
 }
 
-/* Calendar Content (for week and day views) */
 .week-container,
 .day-container {
     flex: 1;
@@ -503,28 +507,6 @@ main {
     overflow: hidden;
 }
 
-
-
-
-/* Add tick marks for time labels */
-.time-label::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 5px;
-    height: 1px;
-    background-color: #ddd;
-}
-
-/* Special styling for noon and midnight */
-.time-label:nth-child(1),  /* 12 AM */
-.time-label:nth-child(13) { /* 12 PM */
-    font-weight: bold;
-    color: #555;
-}
-
-/* Week View */
 .week-header {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -558,7 +540,7 @@ main {
 .week-column {
     border-right: 1px solid #e0e0e0;
     position: relative;
-    min-height: 1440px; /* 24 hours * 60px per hour */
+    min-height: 1440px;
 }
 
 .week-column:last-child {
@@ -580,7 +562,6 @@ main {
     background-color: #f9fcff;
 }
 
-/* Hour Slots */
 .hour-slot {
     height: 60px;
     border-bottom: 1px solid #f0f0f0;
@@ -594,20 +575,6 @@ main {
     background-color: rgba(30, 58, 138, 0.08);
 }
 
-/* Visual feedback for event creation areas */
-.week-column:hover .hour-slot:hover::after {
-    content: "+";
-    position: absolute;
-    right: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #1e3a8a;
-    font-weight: bold;
-    font-size: 16px;
-    opacity: 0.7;
-}
-
-/* Current time indicator */
 .current-time-indicator {
     position: absolute;
     left: 0;
@@ -629,7 +596,6 @@ main {
     border-radius: 50%;
 }
 
-/* Event Styling for Week and Day Views */
 .week-event,
 .day-event {
     position: absolute;
@@ -659,7 +625,6 @@ main {
     margin-right: 2px;
 }
 
-/* Hover effects */
 .week-event:hover,
 .day-event:hover {
     z-index: 15 !important;
@@ -667,103 +632,253 @@ main {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-/* All-day events */
-.week-event.all-day,
-.day-event.all-day {
-    top: 5px !important;
-    height: 20px !important;
-    font-size: 11px;
-    z-index: 6 !important;
-    margin-bottom: 2px;
+/* POMODORO STYLES */
+
+/* Pomodoro Controls in Sidebar */
+.pomodoro-controls {
+    padding: 10px 0;
 }
 
-/* Improve event contrast when they're narrow */
-.week-event[style*="width: 50%"],
-.week-event[style*="width: 33%"],
-.week-event[style*="width: 25%"] {
-    font-size: 10px !important;
-    padding: 1px 3px !important;
+.pomodoro-controls h3 {
+    font-size: 16px;
+    margin-bottom: 15px;
+    color: #1e3a8a;
 }
 
-.day-event[style*="width: 50%"],
-.day-event[style*="width: 33%"],
-.day-event[style*="width: 25%"] {
-    font-size: 12px !important;
-    padding: 2px 4px !important;
+.time-setting {
+    margin-bottom: 15px;
 }
 
-/* When events are very narrow, show abbreviated text */
-.week-event[style*="width: 25%"],
-.week-event[style*="width: 33%"] {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.time-setting label {
+    display: block;
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 5px;
 }
 
-/* Add a small indicator for very narrow events */
-.week-event[style*="width: 25%"]::before,
-.week-event[style*="width: 33%"]::before {
-    content: "•";
-    margin-right: 2px;
+.time-setting input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.session-info {
+    text-align: center;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 10px;
+}
+
+.session-info p {
+    margin: 5px 0;
+    font-size: 14px;
+    color: #333;
+}
+
+/* Pomodoro Main Content */
+.pomodoro-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.pomodoro-header h1 {
+    font-size: 36px;
+    color: #1e3a8a;
+    margin: 0;
+}
+
+.pomodoro-timer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: calc(100vh - 200px);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.timer-circle {
+    position: relative;
+    margin-bottom: 40px;
+}
+
+.progress-ring {
+    transform: rotate(-90deg);
+}
+
+.progress-ring-circle {
+    transition: stroke-dasharray 0.35s;
+}
+
+.progress-ring-progress {
+    stroke-dasharray: 879.646; /* 2 * π * 140 */
+    stroke-dashoffset: 879.646;
+    transition: stroke-dashoffset 1s linear;
+    stroke-linecap: round;
+}
+
+.timer-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.time-left {
+    font-size: 48px;
     font-weight: bold;
+    color: #1e3a8a;
+    margin-bottom: 10px;
+    font-family: 'Courier New', monospace;
 }
 
-/* Improve readability for short events */
-.week-event[style*="height: 30px"],
-.day-event[style*="height: 30px"] {
-    line-height: 1.2;
+.timer-mode {
+    font-size: 18px;
+    color: #666;
+    font-weight: 500;
+}
+
+.timer-controls {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.timer-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
     display: flex;
     align-items: center;
+    gap: 8px;
+    min-width: 120px;
+    justify-content: center;
 }
 
-/* Add a tooltip-like effect for very narrow events */
-.week-event[style*="width: 25%"]:hover,
-.week-event[style*="width: 33%"]:hover {
-    width: auto !important;
-    min-width: 120px !important;
-    white-space: normal !important;
-    z-index: 20 !important;
+.timer-btn.primary {
+    background-color: #1e3a8a;
+    color: white;
 }
 
-/* Default list colors for events */
-.event.personal,
-.week-event.personal,
-.day-event.personal {
-    background-color: #3498db !important;
+.timer-btn.primary:hover {
+    background-color: #162d6a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
 }
 
-.event.work,
-.week-event.work,
-.day-event.work {
-    background-color: #e74c3c !important;
+.timer-btn:not(.primary) {
+    background-color: #f8f9fa;
+    color: #555;
+    border: 2px solid #e9ecef;
 }
 
-.event.shopping,
-.week-event.shopping,
-.day-event.shopping {
-    background-color: #2ecc71 !important;
+.timer-btn:not(.primary):hover {
+    background-color: #e9ecef;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* Force day view to display properly */
-#day-view.active {
-    display: flex !important;
-    flex-direction: column;
-    height: 100%;
+.timer-btn:active {
+    transform: translateY(0);
 }
 
-#day-view .day-container {
+.pomodoro-stats {
     display: flex;
-    flex-direction: column;
-    height: 100%;
-    flex: 1;
+    gap: 40px;
+    justify-content: center;
 }
 
-#day-view .day-grid {
-    flex: 1;
-    position: relative;
-    background-color: white;
-    border: 1px solid #eee;
-    min-height: 500px; /* Temporary to see if it shows */
+.stat-box {
+    text-align: center;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    min-width: 140px;
+    border: 1px solid #e9ecef;
+}
+
+.stat-number {
+    font-size: 32px;
+    font-weight: bold;
+    color: #1e3a8a;
+    margin-bottom: 8px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+/* Pomodoro States */
+.pomodoro-timer.work-mode .progress-ring-progress {
+    stroke: #1e3a8a;
+}
+
+.pomodoro-timer.work-mode .time-left {
+    color: #1e3a8a;
+}
+
+.pomodoro-timer.short-break-mode .progress-ring-progress {
+    stroke: #28a745;
+}
+
+.pomodoro-timer.short-break-mode .time-left {
+    color: #28a745;
+}
+
+.pomodoro-timer.long-break-mode .progress-ring-progress {
+    stroke: #17a2b8;
+}
+
+.pomodoro-timer.long-break-mode .time-left {
+    color: #17a2b8;
+}
+
+/* Animations */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.timer-circle.completed {
+    animation: pulse 0.6s ease-in-out;
+}
+
+/* Notifications */
+.pomodoro-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #1e3a8a;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+}
+
+.pomodoro-notification.show {
+    transform: translateX(0);
+}
+
+.pomodoro-notification.success {
+    background-color: #28a745;
+}
+
+.pomodoro-notification.break {
+    background-color: #17a2b8;
 }
 
 /* Modal Styles */
@@ -874,7 +989,7 @@ main {
     flex: 1;
 }
 
-/* Toggle Switch for "Add as Task" */
+/* Toggle Switch */
 .toggle-switch {
     position: relative;
     display: inline-block;
@@ -993,39 +1108,6 @@ main {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .time-labels {
-        width: 50px;
-    }
-
-    .time-label {
-        font-size: 9px;
-        padding-left: 4px;
-    }
-
-    .calendar-navigation h1 {
-        font-size: 18px;
-    }
-
-    .view-options {
-        flex-direction: column;
-        gap: 2px;
-    }
-
-    .view-option {
-        padding: 6px 10px;
-        font-size: 12px;
-    }
-
-    .modal-content {
-        margin: 10px;
-        max-width: calc(100% - 20px);
-    }
-
-    .form-row {
-        flex-direction: column;
-        gap: 0;
-    }
-
     main {
         margin-left: 0;
         padding: 10px;
@@ -1041,5 +1123,39 @@ main {
         flex-direction: column;
         height: auto;
     }
-}
 
+    .pomodoro-timer {
+        height: auto;
+        padding: 20px 0;
+    }
+
+    .timer-circle {
+        margin-bottom: 20px;
+    }
+
+    .time-left {
+        font-size: 36px;
+    }
+
+    .timer-controls {
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .pomodoro-stats {
+        flex-direction: column;
+        gap: 20px;
+        align-items: center;
+    }
+
+    .modal-content {
+        margin: 10px;
+        max-width: calc(100% - 20px);
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+}

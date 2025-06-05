@@ -1,5 +1,5 @@
-// COMPLETE WORKING CALENDAR - Replace your Cal.js with this
-console.log('=== CALENDAR STARTING ===');
+// COMPLETE WORKING CALENDAR WITH POMODORO - Replace your Cal.js with this
+console.log('=== CALENDAR WITH POMODORO STARTING ===');
 
 // Global state
 let events = [];
@@ -8,6 +8,24 @@ let lists = ['Personal', 'Work', 'Shopping'];
 let currentDate = new Date();
 let currentView = 'month';
 let selectedEvent = null;
+let currentPage = 'calendar'; // 'calendar' or 'pomodoro'
+
+// Pomodoro state
+let pomodoroTimer = {
+    timeLeft: 25 * 60, // 25 minutes in seconds
+    isRunning: false,
+    currentMode: 'work', // 'work', 'shortBreak', 'longBreak'
+    currentSession: 1,
+    totalSessions: 4,
+    completedSessions: 0,
+    totalFocusTime: 0,
+    intervals: null,
+    settings: {
+        workTime: 25,
+        shortBreak: 5,
+        longBreak: 15
+    }
+};
 
 // Date formatters
 let dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -19,6 +37,7 @@ document.addEventListener("DOMContentLoaded", function() {
     console.log('✅ DOM Content Loaded');
     initApp();
     setupEventListeners();
+    loadPomodoroSettings();
 });
 
 function initApp() {
@@ -38,6 +57,9 @@ function initApp() {
     updateCalendarTitle();
     renderMiniCalendar();
     updateCalendarView();
+
+    // Initialize pomodoro
+    updatePomodoroDisplay();
 
     console.log(`📊 Initialized with ${events.length} events and ${lists.length} lists`);
 }
@@ -90,6 +112,32 @@ function createTestEvents() {
 function setupEventListeners() {
     console.log('🔧 Setting up event listeners...');
 
+    // Page navigation
+    const pomodoroLink = document.getElementById('pomodoro-link');
+    const backToCalendar = document.getElementById('back-to-calendar');
+
+    if (pomodoroLink) {
+        pomodoroLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            showPomodoroPage();
+        });
+    }
+
+    if (backToCalendar) {
+        backToCalendar.addEventListener('click', function(e) {
+            e.preventDefault();
+            showCalendarPage();
+        });
+    }
+
+    // Calendar event listeners
+    setupCalendarEventListeners();
+
+    // Pomodoro event listeners
+    setupPomodoroEventListeners();
+}
+
+function setupCalendarEventListeners() {
     // View buttons
     document.querySelectorAll('.view-option').forEach(button => {
         button.addEventListener('click', function() {
@@ -104,7 +152,7 @@ function setupEventListeners() {
     if (prevBtn) prevBtn.addEventListener('click', navigatePrevious);
     if (nextBtn) nextBtn.addEventListener('click', navigateNext);
 
-// Mini calendar navigation
+    // Mini calendar navigation
     const prevMonthBtn = document.getElementById('prev-month-btn');
     const nextMonthBtn = document.getElementById('next-month-btn');
 
@@ -112,7 +160,7 @@ function setupEventListeners() {
         prevMonthBtn.addEventListener('click', function() {
             currentDate.setMonth(currentDate.getMonth() - 1);
             renderMiniCalendar();
-            updateCalendarTitle(); // Add this line
+            updateCalendarTitle();
         });
     }
 
@@ -120,11 +168,9 @@ function setupEventListeners() {
         nextMonthBtn.addEventListener('click', function() {
             currentDate.setMonth(currentDate.getMonth() + 1);
             renderMiniCalendar();
-            updateCalendarTitle(); // Add this line
+            updateCalendarTitle();
         });
     }
-    
-
 
     // Modal event listeners
     const addEventLink = document.getElementById('add-event-link');
@@ -157,17 +203,8 @@ function setupEventListeners() {
     if (editEventBtn) editEventBtn.addEventListener('click', editSelectedEvent);
 
     // Sidebar navigation
-    const todayLink = document.getElementById('today-link');
     const weekLink = document.getElementById('week-link');
     const monthLink = document.getElementById('month-link');
-    const agendaLink = document.getElementById('agenda-link');
-
-    if (todayLink) {
-        todayLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            goToToday();
-        });
-    }
 
     if (weekLink) {
         weekLink.addEventListener('click', function(e) {
@@ -183,17 +220,390 @@ function setupEventListeners() {
         });
     }
 
-
-
     // List management
     const addListBtn = document.getElementById('add-list-btn');
     if (addListBtn) addListBtn.addEventListener('click', addNewList);
 }
 
+function setupPomodoroEventListeners() {
+    // Timer controls
+    const startBtn = document.getElementById('start-timer');
+    const pauseBtn = document.getElementById('pause-timer');
+    const resetBtn = document.getElementById('reset-timer');
+
+    if (startBtn) {
+        startBtn.addEventListener('click', startPomodoro);
+    }
+
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', pausePomodoro);
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', resetPomodoro);
+    }
+
+    // Settings inputs
+    const workTimeInput = document.getElementById('work-time');
+    const shortBreakInput = document.getElementById('short-break');
+    const longBreakInput = document.getElementById('long-break');
+
+    if (workTimeInput) {
+        workTimeInput.addEventListener('change', function() {
+            pomodoroTimer.settings.workTime = parseInt(this.value);
+            savePomodoroSettings();
+            if (pomodoroTimer.currentMode === 'work' && !pomodoroTimer.isRunning) {
+                pomodoroTimer.timeLeft = pomodoroTimer.settings.workTime * 60;
+                updatePomodoroDisplay();
+            }
+        });
+    }
+
+    if (shortBreakInput) {
+        shortBreakInput.addEventListener('change', function() {
+            pomodoroTimer.settings.shortBreak = parseInt(this.value);
+            savePomodoroSettings();
+            if (pomodoroTimer.currentMode === 'shortBreak' && !pomodoroTimer.isRunning) {
+                pomodoroTimer.timeLeft = pomodoroTimer.settings.shortBreak * 60;
+                updatePomodoroDisplay();
+            }
+        });
+    }
+
+    if (longBreakInput) {
+        longBreakInput.addEventListener('change', function() {
+            pomodoroTimer.settings.longBreak = parseInt(this.value);
+            savePomodoroSettings();
+            if (pomodoroTimer.currentMode === 'longBreak' && !pomodoroTimer.isRunning) {
+                pomodoroTimer.timeLeft = pomodoroTimer.settings.longBreak * 60;
+                updatePomodoroDisplay();
+            }
+        });
+    }
+}
+
+// Page Navigation Functions
+function showPomodoroPage() {
+    currentPage = 'pomodoro';
+
+    // Hide calendar content
+    const calendarContent = document.getElementById('calendar-content');
+    const calendarSidebar = document.getElementById('calendar-sidebar');
+
+    // Show pomodoro content
+    const pomodoroContent = document.getElementById('pomodoro-content');
+    const pomodoroSidebar = document.getElementById('pomodoro-sidebar');
+
+    if (calendarContent) calendarContent.style.display = 'none';
+    if (calendarSidebar) calendarSidebar.style.display = 'none';
+    if (pomodoroContent) pomodoroContent.style.display = 'block';
+    if (pomodoroSidebar) pomodoroSidebar.style.display = 'block';
+
+    updatePomodoroDisplay();
+}
+
+function showCalendarPage() {
+    currentPage = 'calendar';
+
+    // Hide pomodoro content
+    const pomodoroContent = document.getElementById('pomodoro-content');
+    const pomodoroSidebar = document.getElementById('pomodoro-sidebar');
+
+    // Show calendar content
+    const calendarContent = document.getElementById('calendar-content');
+    const calendarSidebar = document.getElementById('calendar-sidebar');
+
+    if (pomodoroContent) pomodoroContent.style.display = 'none';
+    if (pomodoroSidebar) pomodoroSidebar.style.display = 'none';
+    if (calendarContent) calendarContent.style.display = 'block';
+    if (calendarSidebar) calendarSidebar.style.display = 'block';
+}
+
+// Pomodoro Functions
+function startPomodoro() {
+    if (!pomodoroTimer.isRunning) {
+        pomodoroTimer.isRunning = true;
+
+        // Update button visibility
+        const startBtn = document.getElementById('start-timer');
+        const pauseBtn = document.getElementById('pause-timer');
+
+        if (startBtn) startBtn.style.display = 'none';
+        if (pauseBtn) pauseBtn.style.display = 'flex';
+
+        // Start the timer
+        pomodoroTimer.intervals = setInterval(() => {
+            pomodoroTimer.timeLeft--;
+            updatePomodoroDisplay();
+
+            if (pomodoroTimer.timeLeft <= 0) {
+                completePomodoro();
+            }
+        }, 1000);
+
+        showNotification('Pomodoro started!', 'success');
+    }
+}
+
+function pausePomodoro() {
+    if (pomodoroTimer.isRunning) {
+        pomodoroTimer.isRunning = false;
+        clearInterval(pomodoroTimer.intervals);
+
+        // Update button visibility
+        const startBtn = document.getElementById('start-timer');
+        const pauseBtn = document.getElementById('pause-timer');
+
+        if (startBtn) startBtn.style.display = 'flex';
+        if (pauseBtn) pauseBtn.style.display = 'none';
+
+        showNotification('Pomodoro paused', 'break');
+    }
+}
+
+function resetPomodoro() {
+    pomodoroTimer.isRunning = false;
+    clearInterval(pomodoroTimer.intervals);
+
+    // Reset to work mode
+    pomodoroTimer.currentMode = 'work';
+    pomodoroTimer.timeLeft = pomodoroTimer.settings.workTime * 60;
+    pomodoroTimer.currentSession = 1;
+
+    // Update button visibility
+    const startBtn = document.getElementById('start-timer');
+    const pauseBtn = document.getElementById('pause-timer');
+
+    if (startBtn) startBtn.style.display = 'flex';
+    if (pauseBtn) pauseBtn.style.display = 'none';
+
+    updatePomodoroDisplay();
+    showNotification('Pomodoro reset', 'break');
+}
+
+function completePomodoro() {
+    pomodoroTimer.isRunning = false;
+    clearInterval(pomodoroTimer.intervals);
+
+    // Add completed session if it was work
+    if (pomodoroTimer.currentMode === 'work') {
+        pomodoroTimer.completedSessions++;
+        pomodoroTimer.totalFocusTime += pomodoroTimer.settings.workTime;
+        updateStats();
+    }
+
+    // Determine next mode
+    if (pomodoroTimer.currentMode === 'work') {
+        if (pomodoroTimer.currentSession % 4 === 0) {
+            // Long break after 4 sessions
+            pomodoroTimer.currentMode = 'longBreak';
+            pomodoroTimer.timeLeft = pomodoroTimer.settings.longBreak * 60;
+            showNotification('Time for a long break!', 'break');
+        } else {
+            // Short break
+            pomodoroTimer.currentMode = 'shortBreak';
+            pomodoroTimer.timeLeft = pomodoroTimer.settings.shortBreak * 60;
+            showNotification('Time for a short break!', 'break');
+        }
+    } else {
+        // Back to work
+        pomodoroTimer.currentMode = 'work';
+        pomodoroTimer.timeLeft = pomodoroTimer.settings.workTime * 60;
+        pomodoroTimer.currentSession++;
+
+        if (pomodoroTimer.currentSession > pomodoroTimer.totalSessions) {
+            pomodoroTimer.currentSession = 1;
+        }
+
+        showNotification('Break over! Time to focus!', 'success');
+    }
+
+    // Update button visibility
+    const startBtn = document.getElementById('start-timer');
+    const pauseBtn = document.getElementById('pause-timer');
+
+    if (startBtn) startBtn.style.display = 'flex';
+    if (pauseBtn) pauseBtn.style.display = 'none';
+
+    updatePomodoroDisplay();
+
+    // Play notification sound (if supported)
+    playNotificationSound();
+}
+
+function updatePomodoroDisplay() {
+    const timeDisplay = document.getElementById('time-display');
+    const timerMode = document.getElementById('timer-mode');
+    const currentSessionElement = document.getElementById('current-session');
+    const currentModeElement = document.getElementById('current-mode');
+    const progressRing = document.querySelector('.progress-ring-progress');
+    const pomodoroTimer_element = document.querySelector('.pomodoro-timer');
+
+    // Update time display
+    if (timeDisplay) {
+        const minutes = Math.floor(pomodoroTimer.timeLeft / 60);
+        const seconds = pomodoroTimer.timeLeft % 60;
+        timeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    // Update mode display
+    if (timerMode) {
+        switch (pomodoroTimer.currentMode) {
+            case 'work':
+                timerMode.textContent = 'Work Time';
+                break;
+            case 'shortBreak':
+                timerMode.textContent = 'Short Break';
+                break;
+            case 'longBreak':
+                timerMode.textContent = 'Long Break';
+                break;
+        }
+    }
+
+    // Update session info
+    if (currentSessionElement) {
+        currentSessionElement.textContent = pomodoroTimer.currentSession;
+    }
+
+    if (currentModeElement) {
+        currentModeElement.textContent = timerMode ? timerMode.textContent : 'Work Time';
+    }
+
+    // Update progress ring
+    if (progressRing) {
+        const totalTime = getTotalTimeForCurrentMode();
+        const progress = 1 - (pomodoroTimer.timeLeft / totalTime);
+        const circumference = 2 * Math.PI * 140; // radius is 140
+        const offset = circumference - (progress * circumference);
+        progressRing.style.strokeDashoffset = offset;
+    }
+
+    // Update timer class for styling
+    if (pomodoroTimer_element) {
+        pomodoroTimer_element.className = 'pomodoro-timer';
+        pomodoroTimer_element.classList.add(`${pomodoroTimer.currentMode}-mode`);
+    }
+}
+
+function getTotalTimeForCurrentMode() {
+    switch (pomodoroTimer.currentMode) {
+        case 'work':
+            return pomodoroTimer.settings.workTime * 60;
+        case 'shortBreak':
+            return pomodoroTimer.settings.shortBreak * 60;
+        case 'longBreak':
+            return pomodoroTimer.settings.longBreak * 60;
+        default:
+            return pomodoroTimer.settings.workTime * 60;
+    }
+}
+
+function updateStats() {
+    const completedSessionsElement = document.getElementById('completed-sessions');
+    const totalTimeElement = document.getElementById('total-time');
+
+    if (completedSessionsElement) {
+        completedSessionsElement.textContent = pomodoroTimer.completedSessions;
+    }
+
+    if (totalTimeElement) {
+        const hours = Math.floor(pomodoroTimer.totalFocusTime / 60);
+        const minutes = pomodoroTimer.totalFocusTime % 60;
+        totalTimeElement.textContent = `${hours}h ${minutes}m`;
+    }
+}
+
+function showNotification(message, type = 'success') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `pomodoro-notification ${type}`;
+    notification.textContent = message;
+
+    // Add to document
+    document.body.appendChild(notification);
+
+    // Show with animation
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 100);
+
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
+function playNotificationSound() {
+    // Try to play a simple beep sound
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (e) {
+        console.log('Audio notification not supported');
+    }
+}
+
+function loadPomodoroSettings() {
+    const saved = localStorage.getItem('pomodoro-settings');
+    if (saved) {
+        const settings = JSON.parse(saved);
+        pomodoroTimer.settings = { ...pomodoroTimer.settings, ...settings };
+
+        // Update input values
+        const workTimeInput = document.getElementById('work-time');
+        const shortBreakInput = document.getElementById('short-break');
+        const longBreakInput = document.getElementById('long-break');
+
+        if (workTimeInput) workTimeInput.value = pomodoroTimer.settings.workTime;
+        if (shortBreakInput) shortBreakInput.value = pomodoroTimer.settings.shortBreak;
+        if (longBreakInput) longBreakInput.value = pomodoroTimer.settings.longBreak;
+
+        // Update current time left if not running
+        if (!pomodoroTimer.isRunning) {
+            pomodoroTimer.timeLeft = pomodoroTimer.settings.workTime * 60;
+        }
+    }
+
+    // Load stats
+    const savedStats = localStorage.getItem('pomodoro-stats');
+    if (savedStats) {
+        const stats = JSON.parse(savedStats);
+        pomodoroTimer.completedSessions = stats.completedSessions || 0;
+        pomodoroTimer.totalFocusTime = stats.totalFocusTime || 0;
+        updateStats();
+    }
+}
+
+function savePomodoroSettings() {
+    localStorage.setItem('pomodoro-settings', JSON.stringify(pomodoroTimer.settings));
+    localStorage.setItem('pomodoro-stats', JSON.stringify({
+        completedSessions: pomodoroTimer.completedSessions,
+        totalFocusTime: pomodoroTimer.totalFocusTime
+    }));
+}
+
 // Navigation functions
 function navigatePrevious() {
     switch(currentView) {
-
         case 'week':
             currentDate.setDate(currentDate.getDate() - 7);
             break;
@@ -206,9 +616,6 @@ function navigatePrevious() {
 
 function navigateNext() {
     switch(currentView) {
-        case 'day':
-            currentDate.setDate(currentDate.getDate() + 1);
-            break;
         case 'week':
             currentDate.setDate(currentDate.getDate() + 7);
             break;
@@ -262,7 +669,6 @@ function updateCalendarView() {
         case 'week':
             renderWeekView();
             break;
-
     }
 
     renderMiniCalendar();
@@ -287,7 +693,6 @@ function updateCalendarTitle() {
             }
             break;
         }
-
     }
 
     const titleElement = document.getElementById('calendar-title');
@@ -357,10 +762,6 @@ function renderMonthView() {
             const moreEventsElement = document.createElement('div');
             moreEventsElement.className = 'more-events';
             moreEventsElement.textContent = `+ ${dayEventsList.length - maxEventsToShow} more`;
-            moreEventsElement.addEventListener('click', function() {
-                currentDate = new Date(currentDay);
-                changeView('day');
-            });
             dayEvents.appendChild(moreEventsElement);
         }
 
@@ -377,7 +778,6 @@ function renderMonthView() {
         monthGrid.appendChild(dayElement);
     }
 }
-// Replace the renderWeekView and renderDayView functions in your Cal.js with these improved versions
 
 function renderWeekView() {
     console.log('📅 Rendering week view...');
@@ -445,14 +845,12 @@ function renderWeekView() {
             dayColumn.appendChild(timeIndicator);
         }
 
-        // Get events for this day and calculate positions with overlap handling
+        // Get events for this day and add them
         const dayFormatted = formatDate(dayDate);
         const dayEvents = getEventsForDay(dayFormatted);
-        const positionedEvents = calculateEventPositions(dayEvents, false); // false = week view
 
-        // Add positioned events to the day column
-        positionedEvents.forEach(eventData => {
-            const eventElement = createWeekDayEvent(eventData.event, false, eventData.position);
+        dayEvents.forEach(event => {
+            const eventElement = createWeekDayEvent(event, false);
             if (eventElement) {
                 dayColumn.appendChild(eventElement);
             }
@@ -460,266 +858,6 @@ function renderWeekView() {
 
         weekGrid.appendChild(dayColumn);
     }
-}
-
-function renderDayView() {
-    console.log('📅 Rendering day view...');
-    const dayHeader = document.getElementById('day-header');
-    const dayGrid = document.getElementById('day-grid');
-
-    if (!dayHeader || !dayGrid) return;
-
-    dayHeader.innerHTML = '';
-    dayGrid.innerHTML = '';
-
-    // Create day header
-    const headerElement = document.createElement('div');
-    headerElement.className = 'day-header';
-    headerElement.textContent = dayFormatter.format(currentDate);
-
-    // Check if it's today
-    const today = new Date();
-    if (currentDate.toDateString() === today.toDateString()) {
-        headerElement.classList.add('today');
-        dayGrid.classList.add('today');
-    } else {
-        dayGrid.classList.remove('today');
-    }
-
-    dayHeader.appendChild(headerElement);
-
-    // Create hour slots
-    for (let hour = 0; hour < 24; hour++) {
-        const hourSlot = document.createElement('div');
-        hourSlot.className = 'hour-slot';
-        hourSlot.dataset.hour = hour;
-
-        // Add hour slot click handler
-        hourSlot.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const selectedDate = new Date(currentDate);
-            selectedDate.setHours(hour);
-            showAddEventModal(selectedDate);
-        });
-
-        dayGrid.appendChild(hourSlot);
-    }
-
-    // Add current time indicator if it's today
-    if (headerElement.classList.contains('today')) {
-        const now = new Date();
-        const hours = now.getHours();
-        const minutes = now.getMinutes();
-        const topPosition = (hours * 60 + minutes) * (60 / 60); // 60px per hour
-
-        const timeIndicator = document.createElement('div');
-        timeIndicator.className = 'current-time-indicator';
-        timeIndicator.style.top = `${topPosition}px`;
-        dayGrid.appendChild(timeIndicator);
-    }
-
-    // Get events for this day and calculate positions with overlap handling
-    const dayFormatted = formatDate(currentDate);
-    const dayEvents = getEventsForDay(dayFormatted);
-    const positionedEvents = calculateEventPositions(dayEvents, true); // true = day view
-
-    // Add positioned events to the day grid
-    positionedEvents.forEach(eventData => {
-        const eventElement = createWeekDayEvent(eventData.event, true, eventData.position);
-        if (eventElement) {
-            dayGrid.appendChild(eventElement);
-        }
-    });
-}
-
-// New function to calculate event positions to prevent overlaps
-function calculateEventPositions(events, isDayView) {
-    // Filter out all-day events and sort timed events by start time
-    const timedEvents = events.filter(event => event.time).sort((a, b) => {
-        const timeA = a.time.split(':').map(Number);
-        const timeB = b.time.split(':').map(Number);
-        return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
-    });
-
-    const allDayEvents = events.filter(event => !event.time);
-
-    // Calculate overlapping groups
-    const eventGroups = [];
-
-    timedEvents.forEach(event => {
-        const eventStart = getEventMinutes(event.time);
-        const eventEnd = getEventMinutes(event.endTime) || (eventStart + 60); // Default 1 hour if no end time
-
-        // Find which group this event belongs to (based on overlaps)
-        let addedToGroup = false;
-
-        for (let group of eventGroups) {
-            // Check if this event overlaps with any event in this group
-            const overlaps = group.some(groupEvent => {
-                const groupStart = getEventMinutes(groupEvent.event.time);
-                const groupEnd = getEventMinutes(groupEvent.event.endTime) || (groupStart + 60);
-
-                return (eventStart < groupEnd && eventEnd > groupStart);
-            });
-
-            if (overlaps) {
-                group.push({ event, start: eventStart, end: eventEnd });
-                addedToGroup = true;
-                break;
-            }
-        }
-
-        // If no overlapping group found, create a new group
-        if (!addedToGroup) {
-            eventGroups.push([{ event, start: eventStart, end: eventEnd }]);
-        }
-    });
-
-    // Calculate positions for each group
-    const positionedEvents = [];
-
-    // Add all-day events first
-    allDayEvents.forEach((event, index) => {
-        positionedEvents.push({
-            event,
-            position: {
-                column: 0,
-                totalColumns: 1,
-                isAllDay: true,
-                allDayIndex: index
-            }
-        });
-    });
-
-    // Add timed events with calculated positions
-    eventGroups.forEach(group => {
-        const groupSize = group.length;
-
-        // Sort events in group by start time, then by end time
-        group.sort((a, b) => {
-            if (a.start === b.start) {
-                return a.end - b.end;
-            }
-            return a.start - b.start;
-        });
-
-        // Assign column positions within the group
-        group.forEach((eventData, index) => {
-            positionedEvents.push({
-                event: eventData.event,
-                position: {
-                    column: index,
-                    totalColumns: groupSize,
-                    isAllDay: false
-                }
-            });
-        });
-    });
-
-    return positionedEvents;
-}
-
-// Helper function to convert time string to minutes since midnight
-function getEventMinutes(timeString) {
-    if (!timeString) return null;
-    const [hours, minutes] = timeString.split(':').map(Number);
-    return hours * 60 + minutes;
-}
-
-// Updated createWeekDayEvent function to handle positioning
-function createWeekDayEvent(event, isDayView = false, position = null) {
-    if (!event.time || (position && position.isAllDay)) {
-        // All-day event - show at top
-        const eventElement = document.createElement('div');
-        eventElement.className = isDayView ? 'day-event all-day' : 'week-event all-day';
-        eventElement.textContent = event.title;
-
-        const topOffset = position && position.allDayIndex ? position.allDayIndex * 25 : 0;
-        eventElement.style.top = `${5 + topOffset}px`;
-        eventElement.style.height = '20px';
-        eventElement.style.backgroundColor = getListColor(event.list);
-        eventElement.style.color = 'white';
-        eventElement.style.fontSize = isDayView ? '14px' : '12px';
-        eventElement.style.padding = '2px 6px';
-        eventElement.style.borderRadius = '3px';
-        eventElement.style.cursor = 'pointer';
-        eventElement.style.position = 'absolute';
-        eventElement.style.left = isDayView ? '10px' : '2px';
-        eventElement.style.right = isDayView ? '10px' : '2px';
-        eventElement.style.zIndex = '6';
-        eventElement.style.overflow = 'hidden';
-        eventElement.style.textOverflow = 'ellipsis';
-        eventElement.style.whiteSpace = 'nowrap';
-
-        eventElement.addEventListener('click', function(e) {
-            e.stopPropagation();
-            showEventDetails(event);
-        });
-
-        return eventElement;
-    }
-
-    // Timed event
-    const [hours, minutes] = event.time.split(':').map(Number);
-    const endHours = event.endTime ? parseInt(event.endTime.split(':')[0]) : hours + 1;
-    const endMinutes = event.endTime ? parseInt(event.endTime.split(':')[1]) : minutes;
-
-    // Calculate position and height
-    const topPosition = (hours * 60 + minutes) * (60 / 60); // 60px per hour
-    const duration = Math.max(((endHours * 60 + endMinutes) - (hours * 60 + minutes)) * (60 / 60), 30);
-
-    const eventElement = document.createElement('div');
-    eventElement.className = isDayView ? 'day-event' : 'week-event';
-    eventElement.textContent = event.title;
-    eventElement.style.top = `${topPosition}px`;
-    eventElement.style.height = `${duration}px`;
-    eventElement.style.backgroundColor = getListColor(event.list);
-    eventElement.style.color = 'white';
-    eventElement.style.fontSize = isDayView ? '14px' : '12px';
-    eventElement.style.padding = isDayView ? '4px 8px' : '2px 6px';
-    eventElement.style.borderRadius = '4px';
-    eventElement.style.cursor = 'pointer';
-    eventElement.style.position = 'absolute';
-    eventElement.style.zIndex = '5';
-    eventElement.style.overflow = 'hidden';
-    eventElement.style.textOverflow = 'ellipsis';
-    eventElement.style.whiteSpace = 'nowrap';
-
-    // Apply positioning if provided (for handling overlaps)
-    if (position && !position.isAllDay) {
-        const columnWidth = 100 / position.totalColumns;
-        const leftOffset = columnWidth * position.column;
-
-        eventElement.style.left = `${leftOffset}%`;
-        eventElement.style.width = `${columnWidth - 1}%`; // -1% for small gap between events
-        eventElement.style.right = 'auto';
-    } else {
-        // Default positioning
-        eventElement.style.left = isDayView ? '10px' : '2px';
-        eventElement.style.right = isDayView ? '10px' : '2px';
-    }
-
-    // Set priority border if applicable
-    if (event.priority) {
-        switch(event.priority) {
-            case 'high':
-                eventElement.style.borderLeft = '3px solid #ff5555';
-                break;
-            case 'medium':
-                eventElement.style.borderLeft = '3px solid #ffa500';
-                break;
-            case 'low':
-                eventElement.style.borderLeft = '3px solid #3498db';
-                break;
-        }
-    }
-
-    eventElement.addEventListener('click', function(e) {
-        e.stopPropagation();
-        showEventDetails(event);
-    });
-
-    return eventElement;
 }
 
 function renderMiniCalendar() {
@@ -1291,4 +1429,4 @@ function saveLists() {
     localStorage.setItem('custom-lists', JSON.stringify(lists));
 }
 
-console.log('✅ Calendar loaded successfully');
+console.log('✅ Calendar with Pomodoro loaded successfully');
