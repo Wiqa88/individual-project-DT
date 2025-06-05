@@ -104,7 +104,7 @@ function setupEventListeners() {
     if (prevBtn) prevBtn.addEventListener('click', navigatePrevious);
     if (nextBtn) nextBtn.addEventListener('click', navigateNext);
 
-    // Mini calendar navigation
+// Mini calendar navigation
     const prevMonthBtn = document.getElementById('prev-month-btn');
     const nextMonthBtn = document.getElementById('next-month-btn');
 
@@ -112,6 +112,7 @@ function setupEventListeners() {
         prevMonthBtn.addEventListener('click', function() {
             currentDate.setMonth(currentDate.getMonth() - 1);
             renderMiniCalendar();
+            updateCalendarTitle(); // Add this line
         });
     }
 
@@ -119,8 +120,11 @@ function setupEventListeners() {
         nextMonthBtn.addEventListener('click', function() {
             currentDate.setMonth(currentDate.getMonth() + 1);
             renderMiniCalendar();
+            updateCalendarTitle(); // Add this line
         });
     }
+    
+
 
     // Modal event listeners
     const addEventLink = document.getElementById('add-event-link');
