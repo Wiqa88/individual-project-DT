@@ -503,32 +503,8 @@ main {
     overflow: hidden;
 }
 
-/* Time Labels Container - Now positioned on the RIGHT */
-.time-labels {
-    width: 80px;
-    border-left: 1px solid #eee;
-    background-color: #f8f9fa;
-    position: relative;
-    flex-shrink: 0;
-    order: 2; /* This moves it to the right */
-}
 
-/* Individual Time Labels */
-.time-label {
-    height: 60px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-start;
-    padding-left: 8px;
-    padding-top: 4px;
-    font-size: 11px;
-    color: #777;
-    position: relative;
-    border-bottom: 1px solid #f0f0f0;
-    box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    letter-spacing: 0.5px;
-}
+
 
 /* Add tick marks for time labels */
 .time-label::before {
@@ -1046,3 +1022,4 @@ main {
         height: auto;
     }
 }
+
