@@ -179,12 +179,7 @@ function setupEventListeners() {
         });
     }
 
-    if (agendaLink) {
-        agendaLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            changeView('day');
-        });
-    }
+
 
     // List management
     const addListBtn = document.getElementById('add-list-btn');
@@ -194,9 +189,7 @@ function setupEventListeners() {
 // Navigation functions
 function navigatePrevious() {
     switch(currentView) {
-        case 'day':
-            currentDate.setDate(currentDate.getDate() - 1);
-            break;
+
         case 'week':
             currentDate.setDate(currentDate.getDate() - 7);
             break;
@@ -265,9 +258,7 @@ function updateCalendarView() {
         case 'week':
             renderWeekView();
             break;
-        case 'day':
-            renderDayView();
-            break;
+
     }
 
     renderMiniCalendar();
@@ -292,9 +283,7 @@ function updateCalendarTitle() {
             }
             break;
         }
-        case 'day':
-            title = dayFormatter.format(currentDate);
-            break;
+
     }
 
     const titleElement = document.getElementById('calendar-title');
@@ -468,120 +457,6 @@ function renderWeekView() {
         weekGrid.appendChild(dayColumn);
     }
 }
-
-// New helper function to create events positioned within the unified grid
-function createWeekDayEventInCell(event, isDayView = false, position = null, dayIndex = 0) {
-    if (!event.time) {
-        // All-day event - position at top
-        const eventElement = document.createElement('div');
-        eventElement.className = isDayView ? 'day-event all-day' : 'week-event all-day';
-        eventElement.textContent = event.title;
-        eventElement.style.position = 'absolute';
-        eventElement.style.top = '5px';
-        eventElement.style.height = '20px';
-        eventElement.style.backgroundColor = getListColor(event.list);
-        eventElement.style.color = 'white';
-        eventElement.style.fontSize = isDayView ? '14px' : '12px';
-        eventElement.style.padding = '2px 6px';
-        eventElement.style.borderRadius = '3px';
-        eventElement.style.cursor = 'pointer';
-        eventElement.style.zIndex = '6';
-        eventElement.style.overflow = 'hidden';
-        eventElement.style.textOverflow = 'ellipsis';
-        eventElement.style.whiteSpace = 'nowrap';
-
-        // Position based on day
-        const dayWidth = isDayView ? '100%' : `${100/7}%`;
-        const leftOffset = isDayView ? '60px' : `${60 + (dayIndex * (100/7))}%`;
-        eventElement.style.left = leftOffset;
-        eventElement.style.width = isDayView ? 'calc(100% - 60px)' : `${100/7}%`;
-
-        eventElement.addEventListener('click', function(e) {
-            e.stopPropagation();
-            showEventDetails(event);
-        });
-
-        return eventElement;
-    }
-
-    // Timed event
-    const [hours, minutes] = event.time.split(':').map(Number);
-    const endHours = event.endTime ? parseInt(event.endTime.split(':')[0]) : hours + 1;
-    const endMinutes = event.endTime ? parseInt(event.endTime.split(':')[1]) : minutes;
-
-    const topPosition = (hours * 60 + minutes) * (60 / 60);
-    const duration = Math.max(((endHours * 60 + endMinutes) - (hours * 60 + minutes)) * (60 / 60), 30);
-
-    const eventElement = document.createElement('div');
-    eventElement.className = isDayView ? 'day-event' : 'week-event';
-    eventElement.textContent = event.title;
-    eventElement.style.position = 'absolute';
-    eventElement.style.top = `${topPosition}px`;
-    eventElement.style.height = `${duration}px`;
-    eventElement.style.backgroundColor = getListColor(event.list);
-    eventElement.style.color = 'white';
-    eventElement.style.fontSize = isDayView ? '14px' : '12px';
-    eventElement.style.padding = isDayView ? '4px 8px' : '2px 6px';
-    eventElement.style.borderRadius = '4px';
-    eventElement.style.cursor = 'pointer';
-    eventElement.style.zIndex = '5';
-    eventElement.style.overflow = 'hidden';
-    eventElement.style.textOverflow = 'ellipsis';
-    eventElement.style.whiteSpace = 'nowrap';
-    eventElement.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.2)';
-
-    // Position based on day and overlaps
-    const dayWidth = isDayView ? '100%' : `${100/7}%`;
-    let leftOffset, width;
-
-    if (isDayView) {
-        leftOffset = '60px';
-        width = 'calc(100% - 60px)';
-
-        if (position && !position.isAllDay) {
-            const columnWidth = `calc((100% - 60px) / ${position.totalColumns})`;
-            leftOffset = `calc(60px + (100% - 60px) * ${position.column} / ${position.totalColumns})`;
-            width = columnWidth;
-        }
-    } else {
-        const baseLeft = 60 + (dayIndex * (100/7));
-        leftOffset = `${baseLeft}%`;
-        width = `${100/7}%`;
-
-        if (position && !position.isAllDay) {
-            const columnWidth = (100/7) / position.totalColumns;
-            leftOffset = `${baseLeft + (columnWidth * position.column)}%`;
-            width = `${columnWidth}%`;
-        }
-    }
-
-    eventElement.style.left = leftOffset;
-    eventElement.style.width = width;
-
-    // Set priority border if applicable
-    if (event.priority) {
-        switch(event.priority) {
-            case 'high':
-                eventElement.style.borderLeft = '3px solid #ff5555';
-                break;
-            case 'medium':
-                eventElement.style.borderLeft = '3px solid #ffa500';
-                break;
-            case 'low':
-                eventElement.style.borderLeft = '3px solid #3498db';
-                break;
-        }
-    }
-
-    eventElement.addEventListener('click', function(e) {
-        e.stopPropagation();
-        showEventDetails(event);
-    });
-
-    return eventElement;
-}
-
-
 
 function renderDayView() {
     console.log('📅 Rendering day view...');
@@ -1382,47 +1257,6 @@ function hashString(str) {
     }
     return hash;
 }
-
-// Add this function to your Cal.js file - it creates the time labels for week and day views
-
-function createTimeLabels() {
-    // Create time labels for week and day views
-    const timeLabelsContainers = document.querySelectorAll('.time-labels');
-
-    timeLabelsContainers.forEach(container => {
-        // Clear existing labels
-        container.innerHTML = '';
-
-        // Create 24 hour labels (0-23)
-        for (let hour = 0; hour < 24; hour++) {
-            const timeLabel = document.createElement('div');
-            timeLabel.className = 'time-label';
-
-            // Format hour for display (12-hour format)
-            let displayHour = hour;
-            let period = 'AM';
-
-            if (hour === 0) {
-                displayHour = 12;
-                period = 'AM';
-            } else if (hour === 12) {
-                displayHour = 12;
-                period = 'PM';
-            } else if (hour > 12) {
-                displayHour = hour - 12;
-                period = 'PM';
-            }
-
-            // Don't show label for first hour (looks cleaner)
-            if (hour > 0) {
-                timeLabel.textContent = `${displayHour}${period}`;
-            }
-
-            container.appendChild(timeLabel);
-        }
-    });
-}
-
 
 // Data storage functions
 function loadEvents() {

@@ -31,10 +31,8 @@
             <div class="menu">
                 <a href="#" id="add-event-link"><i class="fas fa-plus-circle"></i> Add Event</a>
                 <a href="#"><i class="fas fa-search"></i> Search</a>
-                <a href="#" id="today-link"><i class="fas fa-calendar-day"></i> Today</a>
                 <a href="#" id="week-link"><i class="fas fa-calendar-week"></i> Week View</a>
                 <a href="#" id="month-link"><i class="fas fa-calendar-alt"></i> Month View</a>
-                <a href="#" id="agenda-link"><i class="fas fa-list-alt"></i> Agenda</a>
             </div>
 
             <div class="separator-line"></div>
@@ -81,7 +79,7 @@
                 <button id="next-period"><i class="fas fa-chevron-right"></i></button>
             </div>
             <div class="view-options">
-                <button class="view-option" data-view="day">Day</button>
+                <!-- REMOVE THIS LINE: <button class="view-option" data-view="day">Day</button> -->
                 <button class="view-option" data-view="week">Week</button>
                 <button class="view-option active" data-view="month">Month</button>
             </div>
@@ -124,23 +122,7 @@
                 </div>
             </div>
 
-            <div id="day-view" class="calendar-view">
-                <div class="time-labels">
-                    <div class="time-labels-scroll" id="day-time-labels">
-                        <!-- Time labels will be created dynamically -->
-                    </div>
-                </div>
-                <div class="day-container">
-                    <div class="day-header" id="day-header">
-                        <!-- Day header will be added dynamically -->
-                    </div>
-                    <div class="day-grid-container" id="day-grid-container">
-                        <div class="day-grid" id="day-grid">
-                            <!-- Day grid will be added dynamically -->
-                        </div>
-                    </div>
-                </div>
-            </div>
+
         </div>
     </main>
 </div>
@@ -248,6 +230,9 @@
         </div>
     </div>
 </div>
+
+
+
 
 <script src="Cal.js"></script>
 </body>

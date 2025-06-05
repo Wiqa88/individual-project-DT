@@ -378,7 +378,7 @@ main {
 }
 
 .calendar-view.active {
-    display: flex;
+    display: flex !important; /* Add !important temporarily */
     flex-direction: column;
 }
 
@@ -569,13 +569,11 @@ main {
     background-color: #f9fcff;
 }
 
-/* Day View */
 .day-grid {
-    flex: 1;
     position: relative;
-    min-height: 1440px; /* 24 hours * 60px per hour */
+    min-height: 1440px;
     overflow-y: auto;
-    max-height: calc(100vh - 200px);
+    flex: 1;
 }
 
 .day-grid.today {
@@ -744,6 +742,28 @@ main {
 .week-event.shopping,
 .day-event.shopping {
     background-color: #2ecc71 !important;
+}
+
+/* Force day view to display properly */
+#day-view.active {
+    display: flex !important;
+    flex-direction: column;
+    height: 100%;
+}
+
+#day-view .day-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    flex: 1;
+}
+
+#day-view .day-grid {
+    flex: 1;
+    position: relative;
+    background-color: white;
+    border: 1px solid #eee;
+    min-height: 500px; /* Temporary to see if it shows */
 }
 
 /* Modal Styles */
