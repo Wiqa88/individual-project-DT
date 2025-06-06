@@ -1,3 +1,4 @@
+// Updated todo.js with habit integration
 // Global state
 let tasks = [];
 let lists = [];
@@ -188,16 +189,9 @@ document.addEventListener("DOMContentLoaded", function() {
         // Add a new list
         addListBtn.addEventListener("click", addNewList);
     }
-// Add this function to your JavaScript file to handle the different navigation views
-// Add this to your todo.js file, within the setupNavigationEvents function
 
-// Add this to your todo.js file to enhance the navigation system
-
-// Add this within your setupNavigationEvents function
     function setupNavigationEvents() {
-        // ... existing code ...
-
-        // Add visual active state for navigation
+        // Navigation between different views
         function updateActiveNavItem(viewName) {
             // Remove active class from all navigation items
             document.querySelectorAll(".menu a, .list-name").forEach(item => {
@@ -223,7 +217,7 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }
 
-        // Enhance the page title transition
+        // Enhanced page title transition
         function updatePageTitle(newTitle) {
             const titleElement = document.querySelector(".today-title");
 
@@ -240,11 +234,8 @@ document.addEventListener("DOMContentLoaded", function() {
             }, 300);
         }
 
-        // Modify the filter functions to use the enhanced transitions
-
-        // Modify filterTasksByDate
+        // Filter functions with animations
         function filterTasksByDate(dateString, viewTitle) {
-            // First update the page title with animation
             updatePageTitle(viewTitle);
 
             const taskItems = document.querySelectorAll(".task-item");
@@ -316,12 +307,85 @@ document.addEventListener("DOMContentLoaded", function() {
             }, 300); // Match the CSS transition time
         }
 
-        // Similarly modify filterTasksByDateRange and filterTasksByPriority
-        // with the same animation pattern
+        function filterTasksByDateRange(startDateString, endDateString, viewTitle) {
+            const taskItems = document.querySelectorAll(".task-item");
+            let hasVisibleTasks = false;
 
-        // Update filterTasksByList to use the new animations
+            taskItems.forEach(taskItem => {
+                const parentLi = taskItem.closest('li');
+                const dateElement = taskItem.querySelector("[data-field='date'] .display-text");
+
+                if (dateElement) {
+                    const taskDateText = dateElement.textContent.replace("Date: ", "");
+
+                    // Only check date for non-N/A values
+                    if (taskDateText !== "N/A") {
+                        // Convert the displayed date (dd/mm/yyyy) to yyyy-mm-dd for comparison
+                        const dateParts = taskDateText.split('/');
+                        if (dateParts.length === 3) {
+                            const taskDateFormatted = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+
+                            // Check if the task date is within the range
+                            if (taskDateFormatted >= startDateString && taskDateFormatted <= endDateString) {
+                                parentLi.style.display = "flex";
+                                hasVisibleTasks = true;
+                            } else {
+                                parentLi.style.display = "none";
+                            }
+                        } else {
+                            parentLi.style.display = "none";
+                        }
+                    } else {
+                        parentLi.style.display = "none";
+                    }
+                } else {
+                    parentLi.style.display = "none";
+                }
+            });
+
+            document.querySelector(".today-title").textContent = viewTitle;
+
+            // Show a message if no tasks are found
+            if (!hasVisibleTasks) {
+                showNoTasksMessage(viewTitle);
+            } else {
+                removeNoTasksMessage();
+            }
+        }
+
+        function filterTasksByPriority(priorityValue, viewTitle) {
+            const taskItems = document.querySelectorAll(".task-item");
+            let hasVisibleTasks = false;
+
+            taskItems.forEach(taskItem => {
+                const parentLi = taskItem.closest('li');
+                const priorityElement = taskItem.querySelector("[data-field='priority'] .display-text");
+
+                if (priorityElement) {
+                    const taskPriority = priorityElement.textContent.replace("Priority: ", "").toLowerCase();
+
+                    if (taskPriority === priorityValue) {
+                        parentLi.style.display = "flex";
+                        hasVisibleTasks = true;
+                    } else {
+                        parentLi.style.display = "none";
+                    }
+                } else {
+                    parentLi.style.display = "none";
+                }
+            });
+
+            document.querySelector(".today-title").textContent = viewTitle;
+
+            // Show a message if no tasks are found
+            if (!hasVisibleTasks) {
+                showNoTasksMessage(viewTitle);
+            } else {
+                removeNoTasksMessage();
+            }
+        }
+
         function filterTasksByList(listName) {
-            // First update the page title with animation
             updatePageTitle(listName);
 
             const taskItems = document.querySelectorAll(".task-item");
@@ -371,15 +435,29 @@ document.addEventListener("DOMContentLoaded", function() {
             }, 300); // Match the CSS transition time
         }
 
-        // Initialize with Inbox view as active by default
-        document.querySelector(".menu a:nth-child(6)").classList.add("active");
-    }
+        // Display a message when no tasks are found for a view
+        function showNoTasksMessage(viewTitle) {
+            // Remove any existing message first
+            removeNoTasksMessage();
 
+            const messageDiv = document.createElement("div");
+            messageDiv.id = "no-tasks-message";
+            messageDiv.style.cssText = "text-align: center; margin-top: 30px; color: #888; font-size: 16px;";
+            messageDiv.innerHTML = `No tasks found for <strong>${viewTitle}</strong>.<br>Add a new task to get started.`;
 
-    function setupNavigationEvents() {
-        // Get all navigation links
-        const navLinks = document.querySelectorAll(".menu a, .list-name");
+            const taskList = document.getElementById("task-list");
+            taskList.parentNode.appendChild(messageDiv);
+        }
 
+        // Remove the no tasks message if it exists
+        function removeNoTasksMessage() {
+            const existingMessage = document.getElementById("no-tasks-message");
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+        }
+
+        // Navigation event listeners
         // Today view - shows tasks due today
         document.querySelector(".menu a:nth-child(3)").addEventListener("click", function(e) {
             e.preventDefault();
@@ -434,29 +512,11 @@ document.addEventListener("DOMContentLoaded", function() {
             });
         });
 
-        // Update the list item click handler to include the transition
-        // This needs to be applied to any dynamically created list items
-        function updateListClickHandlers() {
-            document.querySelectorAll(".list-name").forEach(listNameEl => {
-                // Remove old event listeners (if any)
-                const newListNameEl = listNameEl.cloneNode(true);
-                listNameEl.parentNode.replaceChild(newListNameEl, listNameEl);
-
-                // Add new event listener with transition
-                newListNameEl.addEventListener('click', function() {
-                    const listName = this.textContent;
-                    applyViewTransition(() => {
-                        filterTasksByList(listName);
-                    });
-                });
-            });
-        }
-
-        // Call this function after rendering lists
-        updateListClickHandlers();
+        // Initialize with Inbox view as active by default
+        document.querySelector(".menu a:nth-child(6)").classList.add("active");
     }
 
-// Add this new function to apply the transition effect
+    // Add this new function to apply the transition effect
     function applyViewTransition(callback) {
         // Get the task list container
         const taskListContainer = document.querySelector('.task-list-container');
@@ -482,163 +542,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }, 300);
     }
 
-// Modify the renderLists function to update click handlers after rendering
-    function renderLists() {
-        listsContainer.innerHTML = '';
-
-        lists.forEach((listName, index) => {
-            const listItem = document.createElement("div");
-            listItem.classList.add("list-item");
-
-            // List name (clickable)
-            const listName_el = document.createElement("span");
-            listName_el.className = "list-name";
-            listName_el.dataset.index = index;
-            listName_el.textContent = listName;
-
-            // We'll update the event listeners in a separate function
-
-            // List actions (edit, delete)
-            const listActions = document.createElement("div");
-            listActions.className = "list-actions";
-
-            // Edit button
-            const editBtn = document.createElement("button");
-            editBtn.className = "list-edit-btn";
-            editBtn.dataset.index = index;
-            editBtn.textContent = "Edit";
-            editBtn.addEventListener('click', function () {
-                editList(index, listItem);
-            });
-
-            // Delete button
-            const deleteBtn = document.createElement("button");
-            deleteBtn.className = "list-delete-btn";
-            deleteBtn.dataset.index = index;
-            deleteBtn.textContent = "Delete";
-            deleteBtn.addEventListener('click', function () {
-                deleteList(index, listName);
-            });
-
-            // Assemble list item
-            listActions.append(editBtn, deleteBtn);
-            listItem.append(listName_el, listActions);
-            listsContainer.appendChild(listItem);
-        });
-
-        // Update the click handlers for list items
-        document.querySelectorAll(".list-name").forEach(listNameEl => {
-            listNameEl.addEventListener('click', function() {
-                const listName = this.textContent;
-                applyViewTransition(() => {
-                    filterTasksByList(listName);
-                });
-            });
-        });
-    }
-
-// Filter tasks by date range
-    function filterTasksByDateRange(startDateString, endDateString, viewTitle) {
-        const taskItems = document.querySelectorAll(".task-item");
-        let hasVisibleTasks = false;
-
-        taskItems.forEach(taskItem => {
-            const parentLi = taskItem.closest('li');
-            const dateElement = taskItem.querySelector("[data-field='date'] .display-text");
-
-            if (dateElement) {
-                const taskDateText = dateElement.textContent.replace("Date: ", "");
-
-                // Only check date for non-N/A values
-                if (taskDateText !== "N/A") {
-                    // Convert the displayed date (dd/mm/yyyy) to yyyy-mm-dd for comparison
-                    const dateParts = taskDateText.split('/');
-                    if (dateParts.length === 3) {
-                        const taskDateFormatted = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-
-                        // Check if the task date is within the range
-                        if (taskDateFormatted >= startDateString && taskDateFormatted <= endDateString) {
-                            parentLi.style.display = "flex";
-                            hasVisibleTasks = true;
-                        } else {
-                            parentLi.style.display = "none";
-                        }
-                    } else {
-                        parentLi.style.display = "none";
-                    }
-                } else {
-                    parentLi.style.display = "none";
-                }
-            } else {
-                parentLi.style.display = "none";
-            }
-        });
-
-        document.querySelector(".today-title").textContent = viewTitle;
-
-        // Show a message if no tasks are found
-        if (!hasVisibleTasks) {
-            showNoTasksMessage(viewTitle);
-        } else {
-            removeNoTasksMessage();
-        }
-    }
-
-// Filter tasks by priority
-    function filterTasksByPriority(priorityValue, viewTitle) {
-        const taskItems = document.querySelectorAll(".task-item");
-        let hasVisibleTasks = false;
-
-        taskItems.forEach(taskItem => {
-            const parentLi = taskItem.closest('li');
-            const priorityElement = taskItem.querySelector("[data-field='priority'] .display-text");
-
-            if (priorityElement) {
-                const taskPriority = priorityElement.textContent.replace("Priority: ", "").toLowerCase();
-
-                if (taskPriority === priorityValue) {
-                    parentLi.style.display = "flex";
-                    hasVisibleTasks = true;
-                } else {
-                    parentLi.style.display = "none";
-                }
-            } else {
-                parentLi.style.display = "none";
-            }
-        });
-
-        document.querySelector(".today-title").textContent = viewTitle;
-
-        // Show a message if no tasks are found
-        if (!hasVisibleTasks) {
-            showNoTasksMessage(viewTitle);
-        } else {
-            removeNoTasksMessage();
-        }
-    }
-
-// Display a message when no tasks are found for a view
-    function showNoTasksMessage(viewTitle) {
-        // Remove any existing message first
-        removeNoTasksMessage();
-
-        const messageDiv = document.createElement("div");
-        messageDiv.id = "no-tasks-message";
-        messageDiv.style.cssText = "text-align: center; margin-top: 30px; color: #888; font-size: 16px;";
-        messageDiv.innerHTML = `No tasks found for <strong>${viewTitle}</strong>.<br>Add a new task to get started.`;
-
-        const taskList = document.getElementById("task-list");
-        taskList.parentNode.appendChild(messageDiv);
-    }
-
-// Remove the no tasks message if it exists
-    function removeNoTasksMessage() {
-        const existingMessage = document.getElementById("no-tasks-message");
-        if (existingMessage) {
-            existingMessage.remove();
-        }
-    }
-
     // ----------------------
     // Task Management
     // ----------------------
@@ -656,19 +559,21 @@ document.addEventListener("DOMContentLoaded", function() {
                 list: listSelect.value !== 'default' ? listSelect.value : 'N/A',
                 completed: false,
                 createdAt: new Date().toISOString(),
-                subtasks: [] // Initialize empty subtasks array
+                subtasks: [], // Initialize empty subtasks array
+                isHabit: false // Initialize habit flag
             };
 
             // Add task to global array
             tasks.push(newTask);
-// Create task element
+
+            // Create task element
             const taskItem = createTaskElement(newTask);
             taskList.appendChild(taskItem);
 
-// Add this line:
+            // Remove no tasks message if it exists
             removeNoTasksMessage();
 
-// Save tasks to localStorage
+            // Save tasks to localStorage
             saveTasks();
 
             // Reset form
@@ -695,9 +600,6 @@ document.addEventListener("DOMContentLoaded", function() {
         taskDescription.style.height = 'auto';
     }
 
-
-
-
     function createTaskElement(task) {
         const taskItem = document.createElement("li");
 
@@ -714,7 +616,6 @@ document.addEventListener("DOMContentLoaded", function() {
         if (task.completed) {
             taskItem.style.opacity = '0.6';
         }
-
 
         // Task item inner structure
         const taskItemInner = document.createElement("div");
@@ -763,6 +664,9 @@ document.addEventListener("DOMContentLoaded", function() {
         // Create new subtask button
         const subtaskButton = createAddSubtaskButton(task, taskContent);
 
+        // Create habit button (NEW)
+        const habitButton = createHabitButton(task);
+
         // Delete button
         const deleteButton = document.createElement("button");
         deleteButton.textContent = "×";
@@ -773,7 +677,29 @@ document.addEventListener("DOMContentLoaded", function() {
 
         // Assemble the task item
         metadata.append(dateDiv, reminderDiv, priorityDiv, listDiv);
+
+        // Add habit indicator if task is a habit
+        if (task.isHabit) {
+            const habitIndicator = document.createElement("span");
+            habitIndicator.className = "habit-indicator";
+            habitIndicator.innerHTML = '<i class="fas fa-seedling"></i> Habit';
+            habitIndicator.style.cssText = `
+                color: #4caf50;
+                font-size: 12px;
+                background: rgba(76, 175, 80, 0.1);
+                padding: 2px 6px;
+                border-radius: 10px;
+                margin-left: 10px;
+            `;
+            metadata.appendChild(habitIndicator);
+        }
+
         taskContent.append(titleDiv, descDiv, metadata, subtaskButton);
+
+        // Add habit button if not already a habit
+        if (!task.isHabit) {
+            taskContent.appendChild(habitButton);
+        }
 
         // Render existing subtasks if any
         renderSubtasks(task, taskContent);
@@ -782,6 +708,127 @@ document.addEventListener("DOMContentLoaded", function() {
         taskItem.append(taskItemInner, deleteButton);
 
         return taskItem;
+    }
+
+    // NEW: Create habit button function
+    function createHabitButton(task) {
+        const habitButton = document.createElement("button");
+        habitButton.className = "habit-button";
+        habitButton.innerHTML = '<i class="fas fa-seedling"></i> Make Habit';
+        habitButton.style.cssText = `
+            background: none;
+            border: none;
+            color: #4caf50;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            margin-top: 5px;
+        `;
+
+        habitButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            makeTaskHabit(task);
+        });
+
+        habitButton.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#f1f8e9';
+        });
+
+        habitButton.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = 'transparent';
+        });
+
+        return habitButton;
+    }
+
+    // NEW: Function to convert task to habit
+    function makeTaskHabit(task) {
+        if (task.isHabit) {
+            showTaskNotification('This task is already a habit!', 'warning');
+            return;
+        }
+
+        // Check if createHabitFromTask function exists (from habits.js)
+        if (typeof window.createHabitFromTask === 'function') {
+            const success = window.createHabitFromTask(task);
+
+            if (success) {
+                task.isHabit = true;
+
+                // Update task in storage
+                const taskIndex = tasks.findIndex(t => t.id === task.id);
+                if (taskIndex !== -1) {
+                    tasks[taskIndex] = task;
+                    saveTasks();
+                }
+
+                // Re-render tasks to show habit indicator
+                renderTasks();
+
+                showTaskNotification('Task converted to habit successfully!', 'success');
+            } else {
+                showTaskNotification('Habit already exists for this task!', 'warning');
+            }
+        } else {
+            // Fallback: just mark as habit locally
+            task.isHabit = true;
+
+            // Update task in storage
+            const taskIndex = tasks.findIndex(t => t.id === task.id);
+            if (taskIndex !== -1) {
+                tasks[taskIndex] = task;
+                saveTasks();
+            }
+
+            // Re-render tasks to show habit indicator
+            renderTasks();
+
+            showTaskNotification('Task marked as habit! Visit the Habits page to track it.', 'success');
+        }
+    }
+
+    // NEW: Task notification function
+    function showTaskNotification(message, type = 'success') {
+        // Create notification
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${type === 'success' ? '#4caf50' : type === 'warning' ? '#ff9800' : '#f44336'};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            max-width: 300px;
+        `;
+        notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : type === 'warning' ? 'exclamation-triangle' : 'times'}"></i> ${message}`;
+
+        document.body.appendChild(notification);
+
+        // Show notification
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 100);
+
+        // Hide notification after 3 seconds
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
     }
 
     function createEditableField(fieldName, value, className, task, prefix = '') {
@@ -1008,7 +1055,7 @@ document.addEventListener("DOMContentLoaded", function() {
         return containerDiv;
     }
 
-// This function needs to be updated to handle immediate date formatting
+    // This function needs to be updated to handle immediate date formatting
     function saveFieldEdit(fieldName, value, task, displayElement, prefix = '') {
         // Get the original value
         const originalValue = task[fieldName];
@@ -1106,206 +1153,6 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-// Update this function to ensure date is formatted correctly when a task is added
-    function addTask() {
-        const titleValue = taskTitle.value.trim();
-
-        if (titleValue) {
-            const newTask = {
-                id: Date.now(), // Unique ID using timestamp
-                title: titleValue,
-                description: taskDescription.value.trim(),
-                date: dueDate.value || null,
-                reminder: reminder.value || null,
-                priority: priority.value !== 'priority' ? priority.value : 'medium',
-                list: listSelect.value !== 'default' ? listSelect.value : 'N/A',
-                completed: false,
-                createdAt: new Date().toISOString(),
-                subtasks: [] // Initialize empty subtasks array
-            };
-
-            // Add task to global array
-            tasks.push(newTask);
-
-            // Create task element
-            const taskItem = createTaskElement(newTask);
-            taskList.appendChild(taskItem);
-
-            // Remove no tasks message if it exists
-            removeNoTasksMessage();
-
-            // Save tasks to localStorage
-            saveTasks();
-
-            // Reset form
-            clearTaskForm();
-
-            // Collapse creation box
-            taskCreationBox.classList.remove("expanded");
-        } else {
-            alert("Please enter a task title");
-        }
-    }
-
-// Update formatDate function to better handle different date formats
-    function formatDate(dateString) {
-        if (!dateString) return 'N/A';
-
-        // Check if the date is already in dd/mm/yyyy format
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
-            return dateString;
-        }
-
-        // Convert from yyyy-mm-dd to dd/mm/yyyy
-        try {
-            const date = new Date(dateString);
-            if (isNaN(date.getTime())) {
-                // Try parsing as yyyy-mm-dd if direct Date parsing fails
-                const parts = dateString.split('-');
-                if (parts.length === 3) {
-                    return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
-                }
-                return 'N/A';
-            }
-
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-
-            return `${day}/${month}/${year}`;
-        } catch (e) {
-            // If any error occurs, return N/A
-            return 'N/A';
-        }
-    }
-
-// Ensure dates are formatted correctly when tasks are first displayed
-    function createTaskElement(task) {
-        const taskItem = document.createElement("li");
-
-        // Set left border color based on priority
-        const priorityColors = {
-            high: '#ff5555',
-            medium: '#ffa500',
-            low: '#1e3a8a',
-            'N/A': '#1e3a8a'
-        };
-        taskItem.style.borderLeftColor = priorityColors[task.priority] || '#1e3a8a';
-
-        // Add opacity if task is completed
-        if (task.completed) {
-            taskItem.style.opacity = '0.6';
-        }
-
-        // Task item inner structure
-        const taskItemInner = document.createElement("div");
-        taskItemInner.className = "task-item";
-
-        // Task completion ring
-        const taskRing = document.createElement("div");
-        taskRing.className = task.completed ? "task-ring completed" : "task-ring";
-        taskRing.addEventListener("click", function () {
-            toggleTaskCompletion(task, taskRing, taskItem);
-        });
-
-        // Task content container
-        const taskContent = document.createElement("div");
-        taskContent.style.width = "100%";
-
-        // Format dates for display - always format here to ensure consistent display
-        const formattedDueDate = formatDate(task.date);
-        const formattedReminderDate = formatDate(task.reminder);
-
-        // Title with inline editing
-        const titleDiv = createEditableField('title', task.title, 'task-title', task);
-
-        // Description with inline editing
-        const descDiv = createEditableField('description', task.description, 'task-desc', task);
-
-        // Metadata container
-        const metadata = document.createElement("div");
-        metadata.classList.add("task-metadata");
-
-        // Date with inline editing - use formatted date
-        const dateDiv = createEditableField('date', formattedDueDate, '', task, 'Date: ');
-
-        // Reminder with inline editing - use formatted date
-        const reminderDiv = createEditableField('reminder', formattedReminderDate, '', task, 'Reminder: ');
-
-        // Priority with inline editing (select dropdown)
-        const priorityDiv = createEditableSelectField('priority', task.priority, task, ['low', 'medium', 'high'], 'Priority: ');
-
-        // List with inline editing (select dropdown)
-        const listDiv = createEditableSelectField('list', task.list, task, ['N/A', ...lists], 'List: ');
-
-        // Store task ID in the DOM element for reference
-        taskItem.dataset.id = task.id;
-
-        // Create new subtask button
-        const subtaskButton = createAddSubtaskButton(task, taskContent);
-
-        // Delete button
-        const deleteButton = document.createElement("button");
-        deleteButton.textContent = "×";
-        deleteButton.className = "delete-task";
-        deleteButton.addEventListener("click", function () {
-            deleteTask(task.id, taskItem);
-        });
-
-        // Assemble the task item
-        metadata.append(dateDiv, reminderDiv, priorityDiv, listDiv);
-        taskContent.append(titleDiv, descDiv, metadata, subtaskButton);
-
-        // Render existing subtasks if any
-        renderSubtasks(task, taskContent);
-
-        taskItemInner.append(taskRing, taskContent);
-        taskItem.append(taskItemInner, deleteButton);
-
-        return taskItem;
-    }
-
-// Update convertToInputDateFormat to better handle different date formats
-    function convertToInputDateFormat(dateString) {
-        if (!dateString || dateString === 'N/A') return '';
-
-        // If already in yyyy-mm-dd format
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-            return dateString;
-        }
-
-        // Convert from dd/mm/yyyy to yyyy-mm-dd
-        try {
-            const parts = dateString.split('/');
-            if (parts.length === 3) {
-                // Make sure we have year-month-day
-                return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-            }
-
-            // If not in expected format, try parsing as a date
-            const date = new Date(dateString);
-            if (!isNaN(date.getTime())) {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                return `${year}-${month}-${day}`;
-            }
-        } catch (e) {
-            // If any error occurs, return empty string
-            console.error("Error converting date format:", e);
-        }
-
-        return '';
-    }
-
-// Fix formatDateForComparison to better handle date conversion
-    function formatDateForComparison(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-
     function toggleTaskCompletion(task, taskRingElement, taskItemElement) {
         // Calculate the new state (opposite of current state)
         const newCompletedState = !task.completed;
@@ -1348,7 +1195,6 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }, { once: true });
     }
-
 
     function deleteTask(taskId, taskElement) {
         if (confirm("Are you sure you want to delete this task?")) {
@@ -1660,7 +1506,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 editable.appendChild(editInput);
 
                 // Show animation
-                setTimeoutsetTimeout(() => {
+                setTimeout(() => {
                     editInput.classList.add('show');
                     editInput.focus();
                     autoExpand(editInput);
@@ -1726,11 +1572,6 @@ document.addEventListener("DOMContentLoaded", function() {
                     saveTask(task);
                 }, 300);
             });
-
-
-
-
-
 
             // Assemble the subtask item (WITHOUT metadata)
             editable.appendChild(displayText);
@@ -1897,7 +1738,9 @@ document.addEventListener("DOMContentLoaded", function() {
             listName_el.dataset.index = index;
             listName_el.textContent = listName;
             listName_el.addEventListener('click', function () {
-                filterTasksByList(listName);
+                applyViewTransition(() => {
+                    filterTasksByList(listName);
+                });
             });
 
             // List actions (edit, delete)
@@ -2074,24 +1917,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    function filterTasksByList(listName) {
-        const taskItems = document.querySelectorAll(".task-item");
-
-        taskItems.forEach(taskItem => {
-            const parentLi = taskItem.closest('li');
-            const taskList = taskItem.querySelector("[data-field='list'] .display-text").textContent.replace("List: ", "");
-
-            if (listName === taskList) {
-                parentLi.style.display = "flex";
-            } else {
-                parentLi.style.display = "none";
-            }
-        });
-
-        // Update the page title to show which list is being viewed
-        document.querySelector(".today-title").textContent = listName;
-    }
-
     // ----------------------
     // Persistence Functions
     // ----------------------
@@ -2198,8 +2023,12 @@ document.addEventListener("DOMContentLoaded", function() {
         return '';
     }
 
-
-
+    function formatDateForComparison(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
 
     function parseDateString(dateString) {
         // Handle special cases
@@ -2221,5 +2050,5 @@ document.addEventListener("DOMContentLoaded", function() {
         textarea.style.height = 'auto';
         textarea.style.height = (textarea.scrollHeight) + 'px';
     };
-})
 
+});

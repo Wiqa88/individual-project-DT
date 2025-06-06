@@ -1,0 +1,224 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Habit Tracker</title>
+  <link rel="stylesheet" href="Habits.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+<div class="container">
+  <div class="left-column">
+    <div class="sidebar-main">
+      <nav>
+        <ul>
+          <li><a href="todo.html"><img src="note.png" alt="To-Do"></a></li>
+          <li><a href="Cal.html"><img src="calendar.png" alt="Calendar"></a></li>
+          <li><a href="#" id="pomodoro-link"><img src="clock.png" alt="Pomodoro"></a></li>
+          <li><a href="Matrix.html"><img src="matrix.png" alt="Eisenhower Matrix"></a></li>
+          <li><a href="Habits.html"><img src="habits.png" alt="Habits"></a></li>
+          <!-- Settings icon added to the bottom -->
+          <li class="settings-li"><a href="Settings.html"><i class="fas fa-cog"></i></a></li>
+        </ul>
+      </nav>
+    </div>
+
+    <div class="sidebar-left">
+      <div class="menu">
+        <a href="#" id="add-habit-link"><i class="fas fa-plus-circle"></i> Add Habit</a>
+        <a href="#" id="view-all-habits"><i class="fas fa-list"></i> All Habits</a>
+        <a href="#" id="view-active-habits"><i class="fas fa-play"></i> Active</a>
+        <a href="#" id="view-completed-habits"><i class="fas fa-check"></i> Completed</a>
+        <a href="#" id="view-streak-habits"><i class="fas fa-fire"></i> Streaks</a>
+      </div>
+
+      <div class="separator-line"></div>
+
+      <div class="habit-stats">
+        <h3>Statistics</h3>
+        <div class="stat-item">
+          <span class="stat-label">Total Habits:</span>
+          <span class="stat-value" id="total-habits">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Active Streaks:</span>
+          <span class="stat-value streak" id="active-streaks">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Completed Today:</span>
+          <span class="stat-value completed" id="completed-today">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Success Rate:</span>
+          <span class="stat-value success" id="success-rate">0%</span>
+        </div>
+      </div>
+
+      <div class="separator-line"></div>
+
+      <div class="habit-categories">
+        <h3>Categories</h3>
+        <div class="category-item">
+          <span class="category-color health"></span>
+          <span>Health & Fitness</span>
+        </div>
+        <div class="category-item">
+          <span class="category-color productivity"></span>
+          <span>Productivity</span>
+        </div>
+        <div class="category-item">
+          <span class="category-color learning"></span>
+          <span>Learning</span>
+        </div>
+        <div class="category-item">
+          <span class="category-color social"></span>
+          <span>Social</span>
+        </div>
+        <div class="category-item">
+          <span class="category-color personal"></span>
+          <span>Personal Care</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <div class="habits-header">
+      <h1>Habit Tracker</h1>
+      <div class="date-navigation">
+        <button id="prev-week" class="nav-btn"><i class="fas fa-chevron-left"></i></button>
+        <span id="current-week">This Week</span>
+        <button id="next-week" class="nav-btn"><i class="fas fa-chevron-right"></i></button>
+      </div>
+    </div>
+
+    <!-- Habit Creation Modal -->
+    <div class="modal" id="habit-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Create New Habit</h2>
+          <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="habit-title">Habit Name</label>
+            <input type="text" id="habit-title" placeholder="e.g., Drink 8 glasses of water" required>
+          </div>
+          <div class="form-group">
+            <label for="habit-description">Description (Optional)</label>
+            <textarea id="habit-description" placeholder="Why is this habit important to you?"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="habit-category">Category</label>
+              <select id="habit-category">
+                <option value="health">Health & Fitness</option>
+                <option value="productivity">Productivity</option>
+                <option value="learning">Learning</option>
+                <option value="social">Social</option>
+                <option value="personal">Personal Care</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="habit-frequency">Frequency</label>
+              <select id="habit-frequency">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="habit-target">Target Goal</label>
+              <input type="number" id="habit-target" placeholder="1" min="1" value="1">
+            </div>
+            <div class="form-group">
+              <label for="habit-unit">Unit</label>
+              <select id="habit-unit">
+                <option value="times">times</option>
+                <option value="minutes">minutes</option>
+                <option value="hours">hours</option>
+                <option value="pages">pages</option>
+                <option value="glasses">glasses</option>
+                <option value="steps">steps</option>
+                <option value="km">kilometers</option>
+                <option value="custom">custom</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="habit-reminder">Reminder Time (Optional)</label>
+            <input type="time" id="habit-reminder">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-habit">Cancel</button>
+          <button id="save-habit">Create Habit</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Habits Grid -->
+    <div class="habits-container">
+      <div class="habits-grid" id="habits-grid">
+        <!-- Habits will be dynamically added here -->
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="empty-state" style="display: none;">
+      <div class="empty-icon">
+        <i class="fas fa-seedling"></i>
+      </div>
+      <h3>No Habits Yet</h3>
+      <p>Start building better habits today. Click "Add Habit" to create your first habit.</p>
+      <button class="create-first-habit" id="create-first-habit">
+        <i class="fas fa-plus"></i> Create Your First Habit
+      </button>
+    </div>
+  </main>
+</div>
+
+<!-- Habit Details Modal -->
+<div class="modal" id="habit-details-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="detail-habit-title">Habit Details</h2>
+      <button class="close-modal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="habit-detail-stats">
+        <div class="detail-stat">
+          <div class="detail-stat-number" id="detail-current-streak">0</div>
+          <div class="detail-stat-label">Current Streak</div>
+        </div>
+        <div class="detail-stat">
+          <div class="detail-stat-number" id="detail-best-streak">0</div>
+          <div class="detail-stat-label">Best Streak</div>
+        </div>
+        <div class="detail-stat">
+          <div class="detail-stat-number" id="detail-completion-rate">0%</div>
+          <div class="detail-stat-label">Completion Rate</div>
+        </div>
+      </div>
+      <div class="habit-calendar" id="habit-calendar">
+        <!-- Calendar view will be added here -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="edit-habit">Edit</button>
+      <button id="delete-habit">Delete</button>
+      <button id="archive-habit">Archive</button>
+    </div>
+  </div>
+</div>
+
+<script src="Habits.js"></script>
+</body>
+
+</html>
