@@ -1,8 +1,9 @@
-// Eisenhower Matrix JavaScript
+// Enhanced Eisenhower Matrix JavaScript with Full Editing
 console.log('=== EISENHOWER MATRIX STARTING ===');
 
 // Global state
 let tasks = [];
+let currentEditingTask = null;
 
 // Wait for DOM to be fully loaded
 document.addEventListener("DOMContentLoaded", function() {
@@ -27,14 +28,60 @@ function setupEventListeners() {
             refreshTasks();
         });
     }
+
+    // Modal close handlers
+    const closeModalBtns = document.querySelectorAll('.close-modal');
+    closeModalBtns.forEach(btn => {
+        btn.addEventListener('click', closeModal);
+    });
+
+    // Edit modal handlers
+    const cancelEditBtn = document.getElementById('cancel-edit');
+    const saveClassificationBtn = document.getElementById('save-classification');
+    const editInTodoBtn = document.getElementById('edit-in-todo');
+
+    if (cancelEditBtn) {
+        cancelEditBtn.addEventListener('click', closeModal);
+    }
+
+    if (saveClassificationBtn) {
+        saveClassificationBtn.addEventListener('click', saveTaskClassification);
+    }
+
+    if (editInTodoBtn) {
+        editInTodoBtn.addEventListener('click', function() {
+            window.location.href = 'todo.html';
+        });
+    }
+
+    // Urgency and importance change handlers for live preview
+    const urgencySelect = document.getElementById('task-urgency');
+    const importanceSelect = document.getElementById('task-importance');
+
+    if (urgencySelect && importanceSelect) {
+        urgencySelect.addEventListener('change', updateQuadrantPreview);
+        importanceSelect.addEventListener('change', updateQuadrantPreview);
+    }
+
+    // Close modal when clicking outside
+    window.addEventListener('click', function(e) {
+        const modal = document.getElementById('edit-task-modal');
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
 }
 
 function loadTasks() {
     // Load tasks from localStorage (same as todo page)
     const savedTasks = localStorage.getItem('tasks');
     tasks = savedTasks ? JSON.parse(savedTasks) : [];
-
     console.log(`📊 Loaded ${tasks.length} tasks from localStorage`);
+}
+
+function saveTasks() {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+    console.log('💾 Tasks saved to localStorage');
 }
 
 function refreshTasks() {
@@ -67,13 +114,17 @@ function showLoadingState() {
 }
 
 function showRefreshNotification() {
+    showNotification('Tasks refreshed!', 'success');
+}
+
+function showNotification(message, type = 'success') {
     // Create notification
     const notification = document.createElement('div');
     notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: #2ed573;
+        background: ${type === 'success' ? '#2ed573' : type === 'error' ? '#ff4757' : '#1e3a8a'};
         color: white;
         padding: 12px 20px;
         border-radius: 6px;
@@ -81,8 +132,9 @@ function showRefreshNotification() {
         z-index: 1000;
         transform: translateX(100%);
         transition: transform 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     `;
-    notification.innerHTML = '<i class="fas fa-check"></i> Tasks refreshed!';
+    notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'times' : 'info'}"></i> ${message}`;
 
     document.body.appendChild(notification);
 
@@ -103,8 +155,8 @@ function showRefreshNotification() {
 }
 
 function categorizeTasks() {
-    // Filter out completed tasks for cleaner view (optional)
-    const activeTasks = tasks.filter(task => !task.completed);
+    // Filter out completed tasks for cleaner view (optional - you can change this)
+    const activeTasks = tasks; // Show all tasks including completed ones
 
     // Initialize quadrants
     const quadrants = {
@@ -170,7 +222,7 @@ function isTaskUrgent(task) {
 function isTaskImportant(task) {
     // A task is important if:
     // 1. It has medium or high priority
-    // 2. It belongs to Work or Personal lists (you can customize this)
+    // 2. It belongs to Work or Personal lists
     // 3. It has a future due date (planned ahead)
 
     if (task.priority === 'high' || task.priority === 'High' ||
@@ -199,21 +251,79 @@ function isTaskImportant(task) {
     return false;
 }
 
-function renderQuadrant(quadrantId, tasks, type) {
+function renderQuadrant(quadrantId, tasksInQuadrant, type) {
     const quadrant = document.getElementById(quadrantId);
     if (!quadrant) return;
 
-    if (tasks.length === 0) {
+    if (tasksInQuadrant.length === 0) {
         quadrant.innerHTML = getEmptyState(type);
         return;
     }
 
     let html = '';
-    tasks.forEach(task => {
+    tasksInQuadrant.forEach(task => {
         html += createTaskHTML(task);
     });
 
     quadrant.innerHTML = html;
+
+    // Add event listeners to task elements
+    addTaskEventListeners(quadrant);
+}
+
+function addTaskEventListeners(quadrant) {
+    // Task click handlers
+    const taskItems = quadrant.querySelectorAll('.task-item');
+    taskItems.forEach(taskItem => {
+        const taskId = taskItem.dataset.taskId;
+
+        // Task click to view details
+        taskItem.addEventListener('click', function(e) {
+            // Don't trigger if clicking on control buttons
+            if (e.target.closest('.task-controls')) return;
+
+            const task = tasks.find(t => t.id == taskId);
+            if (task) {
+                showTaskDetails(task);
+            }
+        });
+
+        // Edit button handler
+        const editBtn = taskItem.querySelector('.edit-btn');
+        if (editBtn) {
+            editBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const task = tasks.find(t => t.id == taskId);
+                if (task) {
+                    openEditModal(task);
+                }
+            });
+        }
+
+        // Delete button handler
+        const deleteBtn = taskItem.querySelector('.delete-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const task = tasks.find(t => t.id == taskId);
+                if (task) {
+                    deleteTask(task);
+                }
+            });
+        }
+
+        // Complete/incomplete button handler
+        const completeBtn = taskItem.querySelector('.complete-btn');
+        if (completeBtn) {
+            completeBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const task = tasks.find(t => t.id == taskId);
+                if (task) {
+                    toggleTaskCompletion(task);
+                }
+            });
+        }
+    });
 }
 
 function getEmptyState(type) {
@@ -277,13 +387,207 @@ function createTaskHTML(task) {
         metaInfo.push(`<span><i class="fas fa-list"></i> ${task.list}</span>`);
     }
 
+    // Control buttons
+    const completeIcon = task.completed ? 'fas fa-undo' : 'fas fa-check';
+    const completeTitle = task.completed ? 'Mark Incomplete' : 'Mark Complete';
+
     return `
         <div class="task-item ${completedClass}" ${priorityAttr} data-task-id="${task.id}">
             <div class="task-title">${task.title}</div>
             ${task.description ? `<div class="task-description">${task.description}</div>` : ''}
             ${metaInfo.length > 0 ? `<div class="task-meta">${metaInfo.join('')}</div>` : ''}
+            <div class="task-controls">
+                <button class="control-btn complete-btn" title="${completeTitle}">
+                    <i class="${completeIcon}"></i>
+                </button>
+                <button class="control-btn edit-btn" title="Edit Task">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="control-btn delete-btn" title="Delete Task">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
         </div>
     `;
+}
+
+function showTaskDetails(task) {
+    // Create a simple task details view
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Task Details</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h4>${task.title}</h4>
+                ${task.description ? `<p><strong>Description:</strong> ${task.description}</p>` : ''}
+                <p><strong>Priority:</strong> ${task.priority || 'Not set'}</p>
+                <p><strong>Due Date:</strong> ${task.date ? new Date(task.date).toLocaleDateString() : 'Not set'}</p>
+                <p><strong>List:</strong> ${task.list || 'N/A'}</p>
+                <p><strong>Status:</strong> ${task.completed ? 'Completed' : 'Pending'}</p>
+                ${task.reminder ? `<p><strong>Reminder:</strong> ${new Date(task.reminder).toLocaleDateString()}</p>` : ''}
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="openEditModal(tasks.find(t => t.id == ${task.id})); this.closest('.modal').remove();">Edit</button>
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove();">Close</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Add close handler
+    modal.querySelector('.close-modal').addEventListener('click', function() {
+        modal.remove();
+    });
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+function openEditModal(task) {
+    currentEditingTask = task;
+    const modal = document.getElementById('edit-task-modal');
+
+    // Set current values
+    const urgencySelect = document.getElementById('task-urgency');
+    const importanceSelect = document.getElementById('task-importance');
+
+    // Determine current urgency level
+    let urgencyLevel = 'low';
+    if (isTaskUrgent(task)) {
+        urgencyLevel = task.priority === 'high' || task.priority === 'High' ? 'high' : 'medium';
+    }
+
+    // Determine current importance level
+    let importanceLevel = 'low';
+    if (isTaskImportant(task)) {
+        if (task.priority === 'high' || task.priority === 'High') {
+            importanceLevel = 'high';
+        } else if (task.priority === 'medium' || task.priority === 'Medium' ||
+            task.list === 'Work' || task.list === 'Personal') {
+            importanceLevel = 'medium';
+        } else {
+            importanceLevel = 'medium';
+        }
+    }
+
+    urgencySelect.value = urgencyLevel;
+    importanceSelect.value = importanceLevel;
+
+    updateQuadrantPreview();
+    modal.style.display = 'flex';
+}
+
+function updateQuadrantPreview() {
+    const urgencySelect = document.getElementById('task-urgency');
+    const importanceSelect = document.getElementById('task-importance');
+    const preview = document.getElementById('quadrant-preview');
+
+    const urgency = urgencySelect.value;
+    const importance = importanceSelect.value;
+
+    let quadrantName = '';
+    let quadrantColor = '';
+
+    if ((urgency === 'high' || urgency === 'medium') && (importance === 'high' || importance === 'medium')) {
+        quadrantName = 'Do First (Urgent & Important)';
+        quadrantColor = '#ff4757';
+    } else if ((urgency === 'low') && (importance === 'high' || importance === 'medium')) {
+        quadrantName = 'Schedule (Important, Not Urgent)';
+        quadrantColor = '#2ed573';
+    } else if ((urgency === 'high' || urgency === 'medium') && (importance === 'low')) {
+        quadrantName = 'Delegate (Urgent, Not Important)';
+        quadrantColor = '#ffa502';
+    } else {
+        quadrantName = 'Eliminate (Neither Urgent nor Important)';
+        quadrantColor = '#747d8c';
+    }
+
+    preview.textContent = quadrantName;
+    preview.style.backgroundColor = quadrantColor;
+    preview.style.color = 'white';
+}
+
+function saveTaskClassification() {
+    if (!currentEditingTask) return;
+
+    const urgencySelect = document.getElementById('task-urgency');
+    const importanceSelect = document.getElementById('task-importance');
+
+    const urgency = urgencySelect.value;
+    const importance = importanceSelect.value;
+
+    // Update task properties based on classification
+    if (importance === 'high') {
+        currentEditingTask.priority = 'high';
+    } else if (importance === 'medium') {
+        currentEditingTask.priority = 'medium';
+    } else {
+        currentEditingTask.priority = 'low';
+    }
+
+    // If urgency is high but importance is low, we might want to adjust
+    if (urgency === 'high' && importance === 'low') {
+        // This goes to delegate quadrant - maybe set reminder or different handling
+        currentEditingTask.priority = 'medium'; // Compromise
+    }
+
+    // Save changes
+    saveTasks();
+
+    // Refresh matrix
+    categorizeTasks();
+    updateStats();
+
+    // Close modal
+    closeModal();
+
+    showNotification('Task classification updated!', 'success');
+}
+
+function deleteTask(task) {
+    if (confirm(`Are you sure you want to delete "${task.title}"?`)) {
+        // Remove from tasks array
+        tasks = tasks.filter(t => t.id !== task.id);
+
+        // Save changes
+        saveTasks();
+
+        // Refresh matrix
+        categorizeTasks();
+        updateStats();
+
+        showNotification('Task deleted successfully!', 'success');
+    }
+}
+
+function toggleTaskCompletion(task) {
+    // Toggle completion status
+    task.completed = !task.completed;
+
+    // Save changes
+    saveTasks();
+
+    // Refresh matrix
+    categorizeTasks();
+    updateStats();
+
+    const message = task.completed ? 'Task marked as complete!' : 'Task marked as incomplete!';
+    showNotification(message, 'success');
+}
+
+function closeModal() {
+    const modal = document.getElementById('edit-task-modal');
+    modal.style.display = 'none';
+    currentEditingTask = null;
 }
 
 function updateStats() {
@@ -321,7 +625,7 @@ function updateStats() {
     if (q4CountElement) q4CountElement.textContent = q4Count;
 }
 
-// Utility function to check if a date is today
+// Utility functions
 function isToday(date) {
     const today = new Date();
     const checkDate = new Date(date);
@@ -331,7 +635,6 @@ function isToday(date) {
         today.getDate() === checkDate.getDate();
 }
 
-// Utility function to check if a date is overdue
 function isOverdue(date) {
     const today = new Date();
     const checkDate = new Date(date);
@@ -342,7 +645,6 @@ function isOverdue(date) {
     return checkDate < today;
 }
 
-// Utility function to get days until due date
 function getDaysUntilDue(date) {
     const today = new Date();
     const dueDate = new Date(date);
@@ -356,4 +658,4 @@ function getDaysUntilDue(date) {
     return diffDays;
 }
 
-console.log('✅ Eisenhower Matrix loaded successfully');
+console.log('✅ Enhanced Eisenhower Matrix loaded successfully');
