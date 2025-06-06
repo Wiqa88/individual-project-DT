@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eisenhower Matrix</title>
+    <link rel="stylesheet" href="Matrix.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+<div class="container">
+    <div class="left-column">
+        <div class="sidebar-main">
+            <nav>
+                <ul>
+                    <li><a href="todo.html"><img src="note.png" alt="To-Do"></a></li>
+                    <li><a href="Cal.html"><img src="calendar.png" alt="Calendar"></a></li>
+                    <li><a href="Cal.html#pomodoro"><img src="clock.png" alt="Pomodoro"></a></li>
+                    <li><a href="Matrix.html"><img src="matrix.png" alt="Eisenhower Matrix"></a></li>
+                    <li><a href="#"><img src="habits.png" alt="Habits"></a></li>
+                    <!-- Settings icon added to the bottom -->
+                    <li class="settings-li"><a href="Settings.html"><i class="fas fa-cog"></i></a></li>
+                </ul>
+            </nav>
+        </div>
+
+        <div class="sidebar-left">
+            <div class="menu">
+                <a href="#" id="refresh-tasks"><i class="fas fa-sync-alt"></i> Refresh Tasks</a>
+                <a href="todo.html"><i class="fas fa-plus-circle"></i> Add New Task</a>
+            </div>
+
+            <div class="separator-line"></div>
+
+            <div class="task-stats">
+                <h3>Task Overview</h3>
+                <div class="stat-item">
+                    <span class="stat-label">Total Tasks:</span>
+                    <span class="stat-value" id="total-tasks">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Urgent & Important:</span>
+                    <span class="stat-value urgent-important" id="q1-count">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Important:</span>
+                    <span class="stat-value important" id="q2-count">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Urgent:</span>
+                    <span class="stat-value urgent" id="q3-count">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Neither:</span>
+                    <span class="stat-value neither" id="q4-count">0</span>
+                </div>
+            </div>
+
+            <div class="separator-line"></div>
+
+            <div class="matrix-legend">
+                <h3>Matrix Guide</h3>
+                <div class="legend-item">
+                    <div class="legend-color urgent-important-bg"></div>
+                    <span>Do First (Urgent & Important)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color important-bg"></div>
+                    <span>Schedule (Important)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color urgent-bg"></div>
+                    <span>Delegate (Urgent)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color neither-bg"></div>
+                    <span>Eliminate (Neither)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main>
+        <div class="matrix-header">
+            <h1>Eisenhower Matrix</h1>
+            <p>Organize your tasks by importance and urgency</p>
+        </div>
+
+        <div class="matrix-container">
+            <!-- Quadrant 1: Urgent & Important -->
+            <div class="quadrant urgent-important" id="quadrant-1">
+                <div class="quadrant-header">
+                    <h2><i class="fas fa-exclamation-triangle"></i> Do First</h2>
+                    <p>Urgent & Important</p>
+                </div>
+                <div class="task-list" id="q1-tasks">
+                    <div class="empty-state">
+                        <i class="fas fa-fire"></i>
+                        <p>No urgent and important tasks</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quadrant 2: Important, Not Urgent -->
+            <div class="quadrant important" id="quadrant-2">
+                <div class="quadrant-header">
+                    <h2><i class="fas fa-calendar-alt"></i> Schedule</h2>
+                    <p>Important, Not Urgent</p>
+                </div>
+                <div class="task-list" id="q2-tasks">
+                    <div class="empty-state">
+                        <i class="fas fa-star"></i>
+                        <p>No important tasks to schedule</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quadrant 3: Urgent, Not Important -->
+            <div class="quadrant urgent" id="quadrant-3">
+                <div class="quadrant-header">
+                    <h2><i class="fas fa-hand-point-right"></i> Delegate</h2>
+                    <p>Urgent, Not Important</p>
+                </div>
+                <div class="task-list" id="q3-tasks">
+                    <div class="empty-state">
+                        <i class="fas fa-clock"></i>
+                        <p>No urgent tasks to delegate</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quadrant 4: Neither Urgent nor Important -->
+            <div class="quadrant neither" id="quadrant-4">
+                <div class="quadrant-header">
+                    <h2><i class="fas fa-trash-alt"></i> Eliminate</h2>
+                    <p>Neither Urgent nor Important</p>
+                </div>
+                <div class="task-list" id="q4-tasks">
+                    <div class="empty-state">
+                        <i class="fas fa-ban"></i>
+                        <p>No tasks to eliminate</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="Matrix.js"></script>
+</body>
+
+</html>
