@@ -1,4 +1,4 @@
-// Updated todo.js with habit integration
+// Updated todo.js with habit integration and fixed task saving
 // Global state
 let tasks = [];
 let lists = [];
@@ -51,16 +51,30 @@ document.addEventListener("DOMContentLoaded", function() {
     // --------------------------
     // Application Initialization
     // --------------------------
-    function initApp() {
-        // Load saved data from localStorage
-        loadLists();
-        loadTasks();
+    async function initApp() {
+        console.log('🚀 Initializing Todo App...');
+
+        // Initialize database first if available
+        if (window.taskDB && !window.taskDB.isReady) {
+            try {
+                await window.taskDB.init();
+                console.log('✅ Database initialized');
+            } catch (error) {
+                console.error('❌ Database initialization failed:', error);
+            }
+        }
+
+        // Load saved data
+        await loadLists();
+        await loadTasks();
 
         // Set up event listeners
         setupTaskCreationEvents();
         setupSortingEvents();
         setupListManagementEvents();
         setupNavigationEvents();
+
+        console.log(`📊 App initialized with ${tasks.length} tasks and ${lists.length} lists`);
     }
 
     // ----------------------
@@ -638,81 +652,105 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // ----------------------
-    // Task Management
+    // Task Management - FIXED VERSION
     // ----------------------
-    function addTask() {
+
+    async function addTask() {
+        const taskTitle = document.getElementById("task-title");
         const titleValue = taskTitle.value.trim();
 
-        if (titleValue) {
-            const newTask = {
-                id: Date.now(), // Unique ID using timestamp
-                title: titleValue,
-                description: taskDescription.value.trim(),
-                date: dueDate.value || null,
-                reminder: reminder.value || null,
-                priority: priority.value !== 'priority' ? priority.value : 'medium',
-                list: listSelect.value !== 'default' ? listSelect.value : 'N/A',
-                completed: false,
-                createdAt: new Date().toISOString(),
-                subtasks: [], // Initialize empty subtasks array
-                isHabit: false // Initialize habit flag
+        if (!titleValue) {
+            alert('Please enter a task title');
+            return;
+        }
+
+        console.log('🔄 Adding new task...');
+
+        // Get habit data if creating habit
+        const makeHabitCheckbox = document.getElementById('make-habit-checkbox');
+        const isCreatingHabit = makeHabitCheckbox && makeHabitCheckbox.checked;
+
+        let habitData = null;
+        if (isCreatingHabit) {
+            habitData = {
+                frequency: document.getElementById('habit-frequency-select')?.value || 'daily',
+                target: parseInt(document.getElementById('habit-target-input')?.value) || 1,
+                unit: document.getElementById('habit-unit-select')?.value || 'times',
+                category: document.getElementById('habit-category-select')?.value || 'health'
             };
+        }
 
-            // Check if user wants to make this a habit
-            const makeHabitCheckbox = document.getElementById('make-habit-checkbox');
-            const shouldCreateHabit = makeHabitCheckbox && makeHabitCheckbox.checked;
+        const newTask = {
+            title: titleValue,
+            description: document.getElementById("task-description").value.trim(),
+            date: document.getElementById("due-date").value || null,
+            reminder: document.getElementById("reminder").value || null,
+            priority: document.getElementById("priority").value !== 'priority' ?
+                document.getElementById("priority").value : 'medium',
+            list: document.getElementById("list").value !== 'default' ?
+                document.getElementById("list").value : 'N/A',
+            completed: false,
+            createdAt: new Date().toISOString(),
+            subtasks: [],
+            isHabit: isCreatingHabit
+        };
 
-            if (shouldCreateHabit) {
-                // Get habit settings
-                const habitFrequencySelect = document.getElementById('habit-frequency-select');
-                const habitTargetInput = document.getElementById('habit-target-input');
-                const habitUnitSelect = document.getElementById('habit-unit-select');
-                const habitCategorySelect = document.getElementById('habit-category-select');
-
-                // Create habit data
-                const habitData = {
-                    frequency: habitFrequencySelect ? habitFrequencySelect.value : 'daily',
-                    target: habitTargetInput ? parseInt(habitTargetInput.value) || 1 : 1,
-                    unit: habitUnitSelect ? habitUnitSelect.value : 'times',
-                    category: habitCategorySelect ? habitCategorySelect.value : 'personal'
-                };
-
-                // Mark task as habit
-                newTask.isHabit = true;
-                newTask.habitData = habitData;
-
-                // Create the habit in the habits system
-                createHabitFromTaskDirect(newTask, habitData);
+        try {
+            // Save to database first
+            if (window.taskDB && window.taskDB.isReady) {
+                const savedId = await window.taskDB.addTask(newTask);
+                newTask.id = savedId;
+                console.log('✅ Task saved to database with ID:', savedId);
+                showTaskNotification('Task saved to database!', 'success');
+            } else {
+                // Fallback to generate ID and save to localStorage
+                newTask.id = Date.now();
+                console.log('📱 Database not available, using localStorage fallback');
+                showTaskNotification('Task saved locally!', 'warning');
             }
 
-            // Add task to global array
+            // Add to local tasks array
+            tasks.push(newTask);
+            console.log(`📊 Total tasks now: ${tasks.length}`);
+
+            // Create habit if requested
+            if (isCreatingHabit && habitData) {
+                createHabitFromTaskDirect(newTask, habitData);
+                showHabitCreationSuccess();
+            }
+
+            // Update localStorage as backup
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+
+            // Re-render all tasks to show the new one
+            renderTasks();
+
+            // Clear and collapse form
+            clearTaskForm();
+            taskCreationBox.classList.remove("expanded");
+
+            console.log('✅ Task added successfully');
+
+        } catch (error) {
+            console.error('❌ Failed to save task:', error);
+
+            // Still add the task locally as fallback
+            newTask.id = Date.now();
             tasks.push(newTask);
 
-            // Create task element
-            const taskItem = createTaskElement(newTask);
-            taskList.appendChild(taskItem);
-
-            // Remove no tasks message if it exists
-            removeNoTasksMessage();
-
-            // Save tasks to localStorage
-            saveTasks();
-
-            // Show success message
-            if (shouldCreateHabit) {
-                showTaskNotification('Task created and added as habit!', 'success');
+            // Create habit if requested
+            if (isCreatingHabit && habitData) {
+                createHabitFromTaskDirect(newTask, habitData);
                 showHabitCreationSuccess();
-            } else {
-                showTaskNotification('Task created successfully!', 'success');
             }
 
-            // Reset form
-            clearTaskForm();
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+            renderTasks();
 
-            // Collapse creation box
+            clearTaskForm();
             taskCreationBox.classList.remove("expanded");
-        } else {
-            alert("Please enter a task title");
+
+            showTaskNotification('Task saved locally (database error)', 'warning');
         }
     }
 
@@ -1367,7 +1405,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
-    function toggleTaskCompletion(task, taskRingElement, taskItemElement) {
+    async function toggleTaskCompletion(task, taskRingElement, taskItemElement) {
         // Calculate the new state (opposite of current state)
         const newCompletedState = !task.completed;
 
@@ -1383,7 +1421,7 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
         // Listen for animation end to finalize changes
-        taskRingElement.addEventListener("animationend", function handler() {
+        taskRingElement.addEventListener("animationend", async function handler() {
             // Remove the animation class and the event listener
             taskRingElement.classList.remove("completing");
             taskRingElement.removeEventListener("animationend", handler);
@@ -1405,21 +1443,53 @@ document.addEventListener("DOMContentLoaded", function() {
             const taskIndex = tasks.findIndex(t => t.id === task.id);
             if (taskIndex !== -1) {
                 tasks[taskIndex].completed = task.completed;
+
+                // Save to both database and localStorage
+                try {
+                    if (window.taskDB && window.taskDB.isReady) {
+                        await window.taskDB.updateTask(tasks[taskIndex]);
+                        console.log('✅ Task completion updated in database');
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to update task in database:', error);
+                }
+
+                // Always save to localStorage as backup
                 saveTasks();
             }
         }, { once: true });
     }
 
-    function deleteTask(taskId, taskElement) {
+    async function deleteTask(taskId, taskElement) {
         if (confirm("Are you sure you want to delete this task?")) {
-            // Remove from DOM
-            taskElement.remove();
+            try {
+                // Remove from database first
+                if (window.taskDB && window.taskDB.isReady) {
+                    await window.taskDB.deleteTask(taskId);
+                    console.log('✅ Task deleted from database');
+                }
 
-            // Remove from global array
-            tasks = tasks.filter(task => task.id !== taskId);
+                // Remove from global array
+                tasks = tasks.filter(task => task.id !== taskId);
 
-            // Save changes
-            saveTasks();
+                // Remove from DOM
+                taskElement.remove();
+
+                // Save changes to localStorage as backup
+                saveTasks();
+
+                showTaskNotification('Task deleted successfully!', 'success');
+
+            } catch (error) {
+                console.error('❌ Failed to delete task from database:', error);
+
+                // Still remove locally
+                tasks = tasks.filter(task => task.id !== taskId);
+                taskElement.remove();
+                saveTasks();
+
+                showTaskNotification('Task deleted locally (database error)', 'warning');
+            }
         }
     }
 
@@ -1647,11 +1717,23 @@ document.addEventListener("DOMContentLoaded", function() {
         }, 300);
     }
 
-    function saveTask(task) {
+    async function saveTask(task) {
         // Find task in global array and update it
         const taskIndex = tasks.findIndex(t => t.id === task.id);
         if (taskIndex !== -1) {
             tasks[taskIndex] = task;
+
+            try {
+                // Update in database if available
+                if (window.taskDB && window.taskDB.isReady) {
+                    await window.taskDB.updateTask(task);
+                    console.log('✅ Task updated in database');
+                }
+            } catch (error) {
+                console.error('❌ Failed to update task in database:', error);
+            }
+
+            // Always save to localStorage as backup
             saveTasks();
         }
     }
@@ -2132,12 +2214,45 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // ----------------------
-    // Persistence Functions
+    // Persistence Functions - UPDATED WITH DATABASE SUPPORT
     // ----------------------
-    function loadTasks() {
-        const savedTasks = localStorage.getItem("tasks");
+    async function loadTasks() {
+        console.log('📂 Loading tasks...');
 
-        tasks = savedTasks ? JSON.parse(savedTasks) : [];
+        try {
+            // Try to load from database first
+            if (window.taskDB && window.taskDB.isReady) {
+                tasks = await window.taskDB.getTasks();
+                console.log(`✅ Loaded ${tasks.length} tasks from database`);
+
+                // Migrate from localStorage if no tasks in database
+                if (tasks.length === 0) {
+                    const savedTasks = localStorage.getItem("tasks");
+                    if (savedTasks) {
+                        const localTasks = JSON.parse(savedTasks);
+                        if (localTasks.length > 0) {
+                            console.log('🔄 Migrating tasks from localStorage...');
+                            for (const task of localTasks) {
+                                await window.taskDB.addTask(task);
+                            }
+                            tasks = await window.taskDB.getTasks();
+                            console.log(`✅ Migrated ${tasks.length} tasks to database`);
+                        }
+                    }
+                }
+            } else {
+                // Fallback to localStorage
+                const savedTasks = localStorage.getItem("tasks");
+                tasks = savedTasks ? JSON.parse(savedTasks) : [];
+                console.log(`📱 Loaded ${tasks.length} tasks from localStorage (fallback)`);
+            }
+        } catch (error) {
+            console.error('❌ Failed to load tasks from database:', error);
+            // Fallback to localStorage
+            const savedTasks = localStorage.getItem("tasks");
+            tasks = savedTasks ? JSON.parse(savedTasks) : [];
+            console.log(`📱 Loaded ${tasks.length} tasks from localStorage (error fallback)`);
+        }
 
         // Render tasks to DOM
         renderTasks();
@@ -2145,9 +2260,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function saveTasks() {
         localStorage.setItem("tasks", JSON.stringify(tasks));
+        console.log(`💾 Saved ${tasks.length} tasks to localStorage`);
     }
 
     function renderTasks() {
+        console.log(`🎨 Rendering ${tasks.length} tasks...`);
         taskList.innerHTML = '';
 
         // Sort tasks: completed at bottom, then by date, then by priority
@@ -2176,11 +2293,12 @@ document.addEventListener("DOMContentLoaded", function() {
             const taskItem = createTaskElement(task);
             taskList.appendChild(taskItem);
         });
+
+        console.log(`✅ Rendered ${sortedTasks.length} task elements`);
     }
 
-    function loadLists() {
+    async function loadLists() {
         const savedLists = localStorage.getItem("custom-lists");
-
         lists = savedLists ? JSON.parse(savedLists) : ["Personal", "Work", "Shopping"];
 
         // Update UI
@@ -2265,4 +2383,42 @@ document.addEventListener("DOMContentLoaded", function() {
         textarea.style.height = (textarea.scrollHeight) + 'px';
     };
 
+    // Global export function for testing
+    window.exportAllData = async function() {
+        console.log('📤 Exporting all data...');
+
+        const exportData = {
+            tasks: tasks,
+            lists: lists,
+            timestamp: new Date().toISOString()
+        };
+
+        // Try to get data from database as well
+        if (window.taskDB && window.taskDB.isReady) {
+            try {
+                const dbTasks = await window.taskDB.getTasks();
+                exportData.databaseTasks = dbTasks;
+                exportData.databaseTasksCount = dbTasks.length;
+            } catch (error) {
+                console.error('Failed to export database tasks:', error);
+            }
+        }
+
+        console.log('Export data:', exportData);
+
+        // Download as JSON file
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+
+        const exportFileDefaultName = `todo-data-${new Date().toISOString().split('T')[0]}.json`;
+
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+
+        alert(`Data exported! Tasks: ${tasks.length}, Lists: ${lists.length}`);
+    };
+
+    console.log('✅ Todo app initialization complete');
 });

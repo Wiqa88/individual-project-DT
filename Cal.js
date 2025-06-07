@@ -1,4 +1,4 @@
-// COMPLETE WORKING CALENDAR WITH POMODORO - Replace your Cal.js with this
+// COMPLETE WORKING CALENDAR WITH POMODORO + DATABASE INTEGRATION
 console.log('=== CALENDAR WITH POMODORO STARTING ===');
 
 // Global state
@@ -69,9 +69,8 @@ function createTestEvents() {
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
 
-    events = [
+    const testEvents = [
         {
-            id: 1001,
             title: "Team Meeting",
             date: formatDate(today),
             time: "10:00",
@@ -82,7 +81,6 @@ function createTestEvents() {
             createdAt: new Date().toISOString()
         },
         {
-            id: 1002,
             title: "Lunch with Sarah",
             date: formatDate(today),
             time: "12:30",
@@ -93,7 +91,6 @@ function createTestEvents() {
             createdAt: new Date().toISOString()
         },
         {
-            id: 1003,
             title: "Grocery Shopping",
             date: formatDate(tomorrow),
             time: "15:00",
@@ -105,7 +102,29 @@ function createTestEvents() {
         }
     ];
 
-    saveEvents();
+    // Save test events to database or localStorage
+    testEvents.forEach(async (event) => {
+        try {
+            if (window.taskDB && window.taskDB.isReady) {
+                const savedId = await window.taskDB.addEvent(event);
+                event.id = savedId;
+                events.push(event);
+                console.log('✅ Test event saved to database');
+            } else {
+                event.id = Date.now() + Math.random();
+                events.push(event);
+                saveEventsToLocalStorage();
+                console.log('📱 Test event saved to localStorage');
+            }
+        } catch (error) {
+            console.error('Failed to save test event:', error);
+            event.id = Date.now() + Math.random();
+            events.push(event);
+            saveEventsToLocalStorage();
+        }
+    });
+
+    updateCalendarView();
     console.log('📝 Created test events');
 }
 
@@ -318,6 +337,217 @@ function showCalendarPage() {
     if (calendarContent) calendarContent.style.display = 'block';
     if (calendarSidebar) calendarSidebar.style.display = 'block';
 }
+
+// DATABASE-INTEGRATED FUNCTIONS
+
+// Replace your existing loadEvents() function with this:
+async function loadEvents() {
+    try {
+        if (window.taskDB && window.taskDB.isReady) {
+            events = await window.taskDB.getEvents();
+            console.log(`✅ Loaded ${events.length} events from database`);
+
+            // Migrate from localStorage if no events in database
+            if (events.length === 0) {
+                const savedEvents = localStorage.getItem('calendar-events');
+                if (savedEvents) {
+                    const localEvents = JSON.parse(savedEvents);
+                    if (localEvents.length > 0) {
+                        console.log('🔄 Migrating events from localStorage...');
+                        for (const event of localEvents) {
+                            await window.taskDB.addEvent(event);
+                        }
+                        events = await window.taskDB.getEvents();
+                        console.log(`✅ Migrated ${events.length} events to database`);
+                    }
+                }
+            }
+        } else {
+            // Fallback to localStorage
+            const savedEvents = localStorage.getItem('calendar-events');
+            events = savedEvents ? JSON.parse(savedEvents) : [];
+            console.log(`📱 Loaded ${events.length} events from localStorage (fallback)`);
+        }
+    } catch (error) {
+        console.error('❌ Failed to load events:', error);
+        const savedEvents = localStorage.getItem('calendar-events');
+        events = savedEvents ? JSON.parse(savedEvents) : [];
+    }
+}
+
+// Fallback localStorage save function
+function saveEventsToLocalStorage() {
+    localStorage.setItem('calendar-events', JSON.stringify(events));
+}
+
+// Replace your existing saveEvent() function with this:
+async function saveEvent() {
+    const titleInput = document.getElementById('event-title');
+    const dateInput = document.getElementById('event-date');
+    const timeInput = document.getElementById('event-time');
+    const endDateInput = document.getElementById('event-end-date');
+    const endTimeInput = document.getElementById('event-end-time');
+    const descriptionInput = document.getElementById('event-description');
+    const listSelect = document.getElementById('event-list');
+    const prioritySelect = document.getElementById('event-priority');
+    const addAsTask = document.getElementById('add-as-task');
+
+    // Validate
+    if (!titleInput || !titleInput.value.trim()) {
+        alert('Please enter a title for the event');
+        return;
+    }
+
+    if (!dateInput || !dateInput.value) {
+        alert('Please select a date for the event');
+        return;
+    }
+
+    // Create event
+    const newEvent = {
+        title: titleInput.value.trim(),
+        date: dateInput.value,
+        time: timeInput ? timeInput.value || null : null,
+        endDate: endDateInput ? endDateInput.value || dateInput.value : dateInput.value,
+        endTime: endTimeInput ? endTimeInput.value || null : null,
+        description: descriptionInput ? descriptionInput.value.trim() : '',
+        list: listSelect && listSelect.value !== 'none' ? listSelect.value : null,
+        priority: prioritySelect && prioritySelect.value !== 'none' ? prioritySelect.value : null,
+        createdAt: new Date().toISOString()
+    };
+
+    try {
+        // Save to database
+        if (window.taskDB && window.taskDB.isReady) {
+            const savedId = await window.taskDB.addEvent(newEvent);
+            newEvent.id = savedId;
+            console.log('✅ Event saved to database with ID:', savedId);
+            showCalendarNotification('Event saved to database!', 'success');
+        } else {
+            // Fallback to localStorage
+            newEvent.id = Date.now();
+            events.push(newEvent);
+            saveEventsToLocalStorage();
+            showCalendarNotification('Event saved locally!', 'warning');
+        }
+
+        // Add to local array for UI
+        events.push(newEvent);
+
+        // Handle "Add as Task"
+        if (addAsTask && addAsTask.checked) {
+            const newTask = {
+                title: titleInput.value.trim(),
+                description: descriptionInput ? descriptionInput.value.trim() : '',
+                date: dateInput.value,
+                reminder: dateInput.value,
+                priority: prioritySelect && prioritySelect.value !== 'none' ? prioritySelect.value : 'medium',
+                list: listSelect && listSelect.value !== 'none' ? listSelect.value : 'N/A',
+                completed: false,
+                subtasks: [],
+                isFromCalendar: true
+            };
+
+            if (window.taskDB && window.taskDB.isReady) {
+                await window.taskDB.addTask(newTask);
+                console.log('✅ Task created from event');
+            } else {
+                const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+                newTask.id = Date.now() + 1;
+                existingTasks.push(newTask);
+                localStorage.setItem('tasks', JSON.stringify(existingTasks));
+            }
+
+            showCalendarNotification('Event created and added to your todo list!', 'success');
+        }
+
+        closeAllModals();
+        updateCalendarView();
+
+    } catch (error) {
+        console.error('❌ Failed to save event:', error);
+        showCalendarNotification('Failed to save event', 'error');
+
+        // Still add to local array as fallback
+        newEvent.id = Date.now();
+        events.push(newEvent);
+        saveEventsToLocalStorage();
+        updateCalendarView();
+    }
+}
+
+// Replace your existing deleteSelectedEvent() function with this:
+async function deleteSelectedEvent() {
+    if (!selectedEvent) return;
+
+    if (confirm('Are you sure you want to delete this event?')) {
+        try {
+            // Remove from database
+            if (window.taskDB && window.taskDB.isReady) {
+                await window.taskDB.deleteEvent(selectedEvent.id);
+                console.log('✅ Event deleted from database:', selectedEvent.id);
+            }
+
+            // Remove from local array
+            events = events.filter(e => e.id !== selectedEvent.id);
+
+            closeAllModals();
+            updateCalendarView();
+            showCalendarNotification('Event deleted!', 'success');
+
+            // Fallback save to localStorage
+            saveEventsToLocalStorage();
+
+        } catch (error) {
+            console.error('❌ Failed to delete event:', error);
+
+            // Still remove locally
+            events = events.filter(e => e.id !== selectedEvent.id);
+            saveEventsToLocalStorage();
+            closeAllModals();
+            updateCalendarView();
+            showCalendarNotification('Event deleted locally!', 'warning');
+        }
+    }
+}
+
+// Add this notification function for calendar:
+function showCalendarNotification(message, type = 'success') {
+    console.log(`${type.toUpperCase()}: ${message}`);
+
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#ef4444'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        z-index: 1000;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+    `;
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
+// ALL THE ORIGINAL CALENDAR FUNCTIONS (these were missing in the database version)
 
 // Pomodoro Functions
 function startPomodoro() {
@@ -1084,72 +1314,6 @@ function closeAllModals() {
     });
 }
 
-function saveEvent() {
-    const titleInput = document.getElementById('event-title');
-    const dateInput = document.getElementById('event-date');
-    const timeInput = document.getElementById('event-time');
-    const endDateInput = document.getElementById('event-end-date');
-    const endTimeInput = document.getElementById('event-end-time');
-    const descriptionInput = document.getElementById('event-description');
-    const listSelect = document.getElementById('event-list');
-    const prioritySelect = document.getElementById('event-priority');
-    const addAsTask = document.getElementById('add-as-task');
-
-    // Validate
-    if (!titleInput || !titleInput.value.trim()) {
-        alert('Please enter a title for the event');
-        return;
-    }
-
-    if (!dateInput || !dateInput.value) {
-        alert('Please select a date for the event');
-        return;
-    }
-
-    // Create event
-    const newEvent = {
-        id: Date.now(),
-        title: titleInput.value.trim(),
-        date: dateInput.value,
-        time: timeInput ? timeInput.value || null : null,
-        endDate: endDateInput ? endDateInput.value || dateInput.value : dateInput.value,
-        endTime: endTimeInput ? endTimeInput.value || null : null,
-        description: descriptionInput ? descriptionInput.value.trim() : '',
-        list: listSelect && listSelect.value !== 'none' ? listSelect.value : null,
-        priority: prioritySelect && prioritySelect.value !== 'none' ? prioritySelect.value : null,
-        createdAt: new Date().toISOString()
-    };
-
-    events.push(newEvent);
-
-    // Handle "Add as Task"
-    if (addAsTask && addAsTask.checked) {
-        const newTask = {
-            id: Date.now() + 1,
-            title: titleInput.value.trim(),
-            description: descriptionInput ? descriptionInput.value.trim() : '',
-            date: dateInput.value,
-            reminder: dateInput.value,
-            priority: prioritySelect && prioritySelect.value !== 'none' ? prioritySelect.value : 'medium',
-            list: listSelect && listSelect.value !== 'none' ? listSelect.value : 'N/A',
-            completed: false,
-            createdAt: new Date().toISOString(),
-            subtasks: [],
-            isFromCalendar: true
-        };
-
-        const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-        existingTasks.push(newTask);
-        localStorage.setItem('tasks', JSON.stringify(existingTasks));
-
-        alert('Event created and added to your todo list!');
-    }
-
-    saveEvents();
-    closeAllModals();
-    updateCalendarView();
-}
-
 function showEventDetails(event) {
     selectedEvent = event;
 
@@ -1201,17 +1365,6 @@ function showEventDetails(event) {
     modal.style.display = 'flex';
 }
 
-function deleteSelectedEvent() {
-    if (!selectedEvent) return;
-
-    if (confirm('Are you sure you want to delete this event?')) {
-        events = events.filter(e => e.id !== selectedEvent.id);
-        saveEvents();
-        closeAllModals();
-        updateCalendarView();
-    }
-}
-
 function editSelectedEvent() {
     if (!selectedEvent) return;
 
@@ -1259,7 +1412,7 @@ function editSelectedEvent() {
                 };
             }
 
-            saveEvents();
+            saveEventsToLocalStorage();
             closeAllModals();
             updateCalendarView();
 
@@ -1401,15 +1554,6 @@ function hashString(str) {
 }
 
 // Data storage functions
-function loadEvents() {
-    const savedEvents = localStorage.getItem('calendar-events');
-    events = savedEvents ? JSON.parse(savedEvents) : [];
-}
-
-function saveEvents() {
-    localStorage.setItem('calendar-events', JSON.stringify(events));
-}
-
 function loadTasks() {
     const savedTasks = localStorage.getItem('tasks');
     tasks = savedTasks ? JSON.parse(savedTasks) : [];
@@ -1429,4 +1573,4 @@ function saveLists() {
     localStorage.setItem('custom-lists', JSON.stringify(lists));
 }
 
-console.log('✅ Calendar with Pomodoro loaded successfully');
+console.log('✅ Calendar with Pomodoro and Database Integration loaded successfully');

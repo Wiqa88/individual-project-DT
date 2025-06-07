@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #1e3a8a;
+            text-align: center;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+
+        button {
+            background-color: #1e3a8a;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background-color: #162d6a;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .success {
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .error {
+            color: #ef4444;
+            font-weight: bold;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+
+        .status.success {
+            background-color: #d1fae5;
+            border: 1px solid #10b981;
+        }
+
+        .status.error {
+            background-color: #fee2e2;
+            border: 1px solid #ef4444;
+        }
+
+        .status.info {
+            background-color: #dbeafe;
+            border: 1px solid #3b82f6;
+        }
+
+        pre {
+            background-color: #f3f4f6;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+
+        .task-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        .task-item {
+            padding: 8px;
+            margin: 5px 0;
+            background-color: white;
+            border-radius: 3px;
+            border-left: 3px solid #1e3a8a;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+    </style>
+
+    <!-- Load the database script -->
+    <script src="db.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1>🗃️ Local Database Test Page</h1>
+
+    <div id="status" class="status info">
+        Loading database...
+    </div>
+
+    <div class="test-section">
+        <h3>📊 Database Status</h3>
+        <div class="controls">
+            <button onclick="checkDatabaseStatus()">Check Status</button>
+            <button onclick="clearAllData()">Clear All Data</button>
+            <button onclick="migrateData()">Migrate from localStorage</button>
+        </div>
+        <div id="db-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>📝 Task Operations</h3>
+        <div class="controls">
+            <button onclick="addSampleTask()">Add Sample Task</button>
+            <button onclick="loadTasks()">Load All Tasks</button>
+            <button onclick="addRandomTask()">Add Random Task</button>
+            <button onclick="toggleFirstTask()">Toggle First Task</button>
+            <button onclick="deleteFirstTask()">Delete First Task</button>
+        </div>
+        <div id="task-results"></div>
+        <div id="task-list" class="task-list"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>📋 List Operations</h3>
+        <div class="controls">
+            <button onclick="addSampleList()">Add Sample List</button>
+            <button onclick="loadLists()">Load All Lists</button>
+            <button onclick="deleteSampleList()">Delete Sample List</button>
+        </div>
+        <div id="list-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🔧 Advanced Operations</h3>
+        <div class="controls">
+            <button onclick="exportData()">Export Data</button>
+            <button onclick="getStatistics()">Get Statistics</button>
+            <button onclick="performanceTest()">Performance Test</button>
+        </div>
+        <div id="advanced-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>📤 Console Log</h3>
+        <pre id="console-log"></pre>
+        <button onclick="clearConsole()">Clear Log</button>
+    </div>
+</div>
+
+<script>
+    // Global variables
+    let tasks = [];
+    let lists = [];
+    let logMessages = [];
+
+    // Custom console logging
+    function log(message, type = 'info') {
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = `[${timestamp}] ${message}`;
+        logMessages.push(logEntry);
+
+        // Keep only last 20 messages
+        if (logMessages.length > 20) {
+            logMessages.shift();
+        }
+
+        updateConsoleLog();
+        console.log(message);
+    }
+
+    function updateConsoleLog() {
+        document.getElementById('console-log').textContent = logMessages.join('\n');
+    }
+
+    function clearConsole() {
+        logMessages = [];
+        updateConsoleLog();
+    }
+
+    function showResult(elementId, content, type = 'info') {
+        const element = document.getElementById(elementId);
+        element.innerHTML = `<div class="status ${type}">${content}</div>`;
+    }
+
+    // Wait for database to initialize
+    window.addEventListener('DOMContentLoaded', async function() {
+        try {
+            if (window.taskDB) {
+                await window.taskDB.init();
+                showResult('status', '✅ Database initialized successfully!', 'success');
+                log('Database initialized successfully');
+            } else {
+                throw new Error('Database not available');
+            }
+        } catch (error) {
+            showResult('status', `❌ Database initialization failed: ${error.message}`, 'error');
+            log(`Database initialization failed: ${error.message}`);
+        }
+    });
+
+    // Database Status Functions
+    async function checkDatabaseStatus() {
+        try {
+            const tasks = await taskDB.getTasks();
+            const habits = await taskDB.getHabits();
+            const events = await taskDB.getEvents();
+            const lists = await taskDB.getLists();
+
+            const status = `
+                    <strong>Database Status:</strong> ✅ Connected<br>
+                    <strong>Tasks:</strong> ${tasks.length}<br>
+                    <strong>Habits:</strong> ${habits.length}<br>
+                    <strong>Events:</strong> ${events.length}<br>
+                    <strong>Lists:</strong> ${lists.length}<br>
+                    <strong>Storage:</strong> IndexedDB
+                `;
+
+            showResult('db-status', status, 'success');
+            log(`Database status checked - Tasks: ${tasks.length}, Habits: ${habits.length}, Events: ${events.length}, Lists: ${lists.length}`);
+        } catch (error) {
+            showResult('db-status', `❌ Error: ${error.message}`, 'error');
+            log(`Database status check failed: ${error.message}`);
+        }
+    }
+
+    async function clearAllData() {
+        if (confirm('Are you sure you want to clear ALL data? This cannot be undone.')) {
+            try {
+                await taskDB.clearAllData();
+                showResult('db-status', '✅ All data cleared successfully', 'success');
+                log('All data cleared from database');
+
+                // Clear UI
+                document.getElementById('task-list').innerHTML = '';
+                document.getElementById('list-results').innerHTML = '';
+            } catch (error) {
+                showResult('db-status', `❌ Clear failed: ${error.message}`, 'error');
+                log(`Clear data failed: ${error.message}`);
+            }
+        }
+    }
+
+    async function migrateData() {
+        try {
+            const migrated = await taskDB.migrateFromLocalStorage();
+            if (migrated) {
+                showResult('db-status', '✅ Data migrated from localStorage', 'success');
+                log('Data successfully migrated from localStorage');
+            } else {
+                showResult('db-status', 'ℹ️ No data found in localStorage to migrate', 'info');
+                log('No localStorage data found to migrate');
+            }
+        } catch (error) {
+            showResult('db-status', `❌ Migration failed: ${error.message}`, 'error');
+            log(`Migration failed: ${error.message}`);
+        }
+    }
+
+    // Task Functions
+    async function addSampleTask() {
+        try {
+            const sampleTask = {
+                title: "Sample Task",
+                description: "This is a test task created from the test page",
+                priority: "medium",
+                date: new Date().toISOString().split('T')[0],
+                list: "Test",
+                completed: false
+            };
+
+            const taskId = await taskDB.addTask(sampleTask);
+            showResult('task-results', `✅ Sample task added with ID: ${taskId}`, 'success');
+            log(`Sample task added with ID: ${taskId}`);
+            await loadTasks();
+        } catch (error) {
+            showResult('task-results', `❌ Failed to add task: ${error.message}`, 'error');
+            log(`Failed to add sample task: ${error.message}`);
+        }
+    }
+
+    async function addRandomTask() {
+        try {
+            const randomTasks = [
+                { title: "Buy groceries", priority: "medium", list: "Personal" },
+                { title: "Finish project report", priority: "high", list: "Work" },
+                { title: "Call dentist", priority: "low", list: "Health" },
+                { title: "Plan weekend trip", priority: "low", list: "Personal" },
+                { title: "Review code", priority: "medium", list: "Work" }
+            ];
+
+            const randomTask = randomTasks[Math.floor(Math.random() * randomTasks.length)];
+            randomTask.description = `Random task generated at ${new Date().toLocaleTimeString()}`;
+            randomTask.completed = false;
+
+            const taskId = await taskDB.addTask(randomTask);
+            showResult('task-results', `✅ Random task "${randomTask.title}" added`, 'success');
+            log(`Random task added: ${randomTask.title}`);
+            await loadTasks();
+        } catch (error) {
+            showResult('task-results', `❌ Failed to add random task: ${error.message}`, 'error');
+            log(`Failed to add random task: ${error.message}`);
+        }
+    }
+
+    async function loadTasks() {
+        try {
+            tasks = await taskDB.getTasks();
+
+            let taskListHTML = '';
+            if (tasks.length === 0) {
+                taskListHTML = '<div style="text-align: center; color: #666;">No tasks found</div>';
+            } else {
+                tasks.forEach((task, index) => {
+                    const completedText = task.completed ? ' ✅' : '';
+                    taskListHTML += `
+                            <div class="task-item">
+                                <strong>${task.title}${completedText}</strong><br>
+                                <small>ID: ${task.id} | Priority: ${task.priority} | List: ${task.list || 'None'}</small><br>
+                                <small>${task.description || 'No description'}</small>
+                            </div>
+                        `;
+                });
+            }
+
+            document.getElementById('task-list').innerHTML = taskListHTML;
+            showResult('task-results', `✅ Loaded ${tasks.length} tasks`, 'success');
+            log(`Loaded ${tasks.length} tasks from database`);
+        } catch (error) {
+            showResult('task-results', `❌ Failed to load tasks: ${error.message}`, 'error');
+            log(`Failed to load tasks: ${error.message}`);
+        }
+    }
+
+    async function toggleFirstTask() {
+        try {
+            if (tasks.length === 0) {
+                await loadTasks();
+                if (tasks.length === 0) {
+                    showResult('task-results', 'ℹ️ No tasks to toggle', 'info');
+                    return;
+                }
+            }
+
+            const firstTask = tasks[0];
+            firstTask.completed = !firstTask.completed;
+
+            await taskDB.updateTask(firstTask);
+            showResult('task-results', `✅ Task "${firstTask.title}" ${firstTask.completed ? 'completed' : 'uncompleted'}`, 'success');
+            log(`Task toggled: ${firstTask.title} - ${firstTask.completed ? 'completed' : 'uncompleted'}`);
+            await loadTasks();
+        } catch (error) {
+            showResult('task-results', `❌ Failed to toggle task: ${error.message}`, 'error');
+            log(`Failed to toggle task: ${error.message}`);
+        }
+    }
+
+    async function deleteFirstTask() {
+        try {
+            if (tasks.length === 0) {
+                await loadTasks();
+                if (tasks.length === 0) {
+                    showResult('task-results', 'ℹ️ No tasks to delete', 'info');
+                    return;
+                }
+            }
+
+            const firstTask = tasks[0];
+            await taskDB.deleteTask(firstTask.id);
+            showResult('task-results', `✅ Task "${firstTask.title}" deleted`, 'success');
+            log(`Task deleted: ${firstTask.title}`);
+            await loadTasks();
+        } catch (error) {
+            showResult('task-results', `❌ Failed to delete task: ${error.message}`, 'error');
+            log(`Failed to delete task: ${error.message}`);
+        }
+    }
+
+    // List Functions
+    async function addSampleList() {
+        try {
+            const sampleList = {
+                name: "Test List",
+                color: "#1e3a8a"
+            };
+
+            const listId = await taskDB.addList(sampleList);
+            showResult('list-results', `✅ Sample list added with ID: ${listId}`, 'success');
+            log(`Sample list added: ${sampleList.name}`);
+            await loadLists();
+        } catch (error) {
+            showResult('list-results', `❌ Failed to add list: ${error.message}`, 'error');
+            log(`Failed to add sample list: ${error.message}`);
+        }
+    }
+
+    async function loadLists() {
+        try {
+            lists = await taskDB.getLists();
+
+            let listHTML = '';
+            if (lists.length === 0) {
+                listHTML = 'No lists found';
+            } else {
+                listHTML = lists.map(list =>
+                    `<div><strong>${list.name || list}</strong> (ID: ${list.id || 'N/A'})</div>`
+                ).join('');
+            }
+
+            showResult('list-results', `✅ Loaded ${lists.length} lists:<br>${listHTML}`, 'success');
+            log(`Loaded ${lists.length} lists from database`);
+        } catch (error) {
+            showResult('list-results', `❌ Failed to load lists: ${error.message}`, 'error');
+            log(`Failed to load lists: ${error.message}`);
+        }
+    }
+
+    async function deleteSampleList() {
+        try {
+            const testList = lists.find(list => (list.name || list) === "Test List");
+            if (testList) {
+                await taskDB.deleteList(testList.id);
+                showResult('list-results', '✅ Test List deleted', 'success');
+                log('Test List deleted');
+                await loadLists();
+            } else {
+                showResult('list-results', 'ℹ️ No Test List found to delete', 'info');
+                log('No Test List found to delete');
+            }
+        } catch (error) {
+            showResult('list-results', `❌ Failed to delete list: ${error.message}`, 'error');
+            log(`Failed to delete list: ${error.message}`);
+        }
+    }
+
+    // Advanced Functions
+    async function exportData() {
+        try {
+            const data = await taskDB.exportData();
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `taskmanager-export-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+
+            URL.revokeObjectURL(url);
+
+            showResult('advanced-results', `✅ Data exported successfully!<br>Tasks: ${data.tasks.length}, Events: ${data.events.length}, Lists: ${data.lists.length}`, 'success');
+            log(`Data exported - Tasks: ${data.tasks.length}, Events: ${data.events.length}, Lists: ${data.lists.length}`);
+        } catch (error) {
+            showResult('advanced-results', `❌ Export failed: ${error.message}`, 'error');
+            log(`Export failed: ${error.message}`);
+        }
+    }
+
+    async function getStatistics() {
+        try {
+            const allTasks = await taskDB.getTasks();
+            const completedTasks = await taskDB.getCompletedTasks();
+            const pendingTasks = await taskDB.getPendingTasks();
+            const allLists = await taskDB.getLists();
+
+            const stats = `
+                    <strong>📊 Database Statistics:</strong><br>
+                    Total Tasks: ${allTasks.length}<br>
+                    Completed Tasks: ${completedTasks.length}<br>
+                    Pending Tasks: ${pendingTasks.length}<br>
+                    Completion Rate: ${allTasks.length > 0 ? Math.round((completedTasks.length / allTasks.length) * 100) : 0}%<br>
+                    Total Lists: ${allLists.length}
+                `;
+
+            showResult('advanced-results', stats, 'info');
+            log(`Statistics: ${allTasks.length} total tasks, ${completedTasks.length} completed, ${allLists.length} lists`);
+        } catch (error) {
+            showResult('advanced-results', `❌ Statistics failed: ${error.message}`, 'error');
+            log(`Statistics failed: ${error.message}`);
+        }
+    }
+
+    async function performanceTest() {
+        try {
+            showResult('advanced-results', 'Running performance test...', 'info');
+
+            const startTime = performance.now();
+
+            // Add 100 test tasks
+            const testTasks = [];
+            for (let i = 0; i < 100; i++) {
+                testTasks.push({
+                    title: `Performance Test Task ${i + 1}`,
+                    description: `This is test task number ${i + 1}`,
+                    priority: ['low', 'medium', 'high'][i % 3],
+                    completed: i % 4 === 0
+                });
+            }
+
+            // Bulk add tasks
+            await taskDB.bulkAdd('tasks', testTasks);
+
+            // Read all tasks
+            const allTasks = await taskDB.getTasks();
+
+            // Update some tasks
+            for (let i = 0; i < 10; i++) {
+                const task = allTasks[i];
+                task.completed = !task.completed;
+                await taskDB.updateTask(task);
+            }
+
+            // Delete test tasks
+            for (const task of testTasks) {
+                if (task.id) {
+                    await taskDB.deleteTask(task.id);
+                }
+            }
+
+            const endTime = performance.now();
+            const duration = Math.round(endTime - startTime);
+
+            showResult('advanced-results', `✅ Performance test completed!<br>Added, updated, and deleted 100 tasks in ${duration}ms`, 'success');
+            log(`Performance test completed in ${duration}ms`);
+        } catch (error) {
+            showResult('advanced-results', `❌ Performance test failed: ${error.message}`, 'error');
+            log(`Performance test failed: ${error.message}`);
+        }
+    }
+</script>
+</body>
+</html>

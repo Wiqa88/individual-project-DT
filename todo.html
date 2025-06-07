@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="en">
 
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <head>
@@ -9,6 +10,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>To-Do List</title>
   <link rel="stylesheet" href="todo.css">
+  <!-- Add this line BEFORE your existing script tags -->
+  <script src="db.js"></script>
 </head>
 <body>
 <div class="container">
@@ -144,6 +147,13 @@
   </main>
 </div>
 
+<!-- Add this button somewhere in your UI for testing -->
+<button onclick="exportAllData()" style="position: fixed; bottom: 20px; right: 20px; background: #1e3a8a; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer;">
+  📤 Export Data
+</button>
+
+<!-- Your existing script tags -->
 <script src="todo.js"></script>
+
 </body>
 </html>
