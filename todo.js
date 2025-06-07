@@ -140,6 +140,101 @@ document.addEventListener("DOMContentLoaded", function() {
                 console.log(`Reminder will be saved as: ${formattedDate}`);
             }
         });
+
+        // NEW: Habit creation functionality
+        setupHabitCreationEvents();
+    }
+
+    // NEW: Setup habit creation events
+    function setupHabitCreationEvents() {
+        const makeHabitCheckbox = document.getElementById('make-habit-checkbox');
+        const habitSettings = document.getElementById('habit-settings');
+        const habitFrequencySelect = document.getElementById('habit-frequency-select');
+        const habitTargetInput = document.getElementById('habit-target-input');
+        const habitUnitSelect = document.getElementById('habit-unit-select');
+        const habitCategorySelect = document.getElementById('habit-category-select');
+
+        // Toggle habit settings visibility
+        if (makeHabitCheckbox) {
+            makeHabitCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    habitSettings.style.display = 'block';
+                    habitSettings.classList.add('show');
+                    taskCreationBox.classList.add('has-habit');
+
+                    // Auto-set some smart defaults based on task content
+                    autoSetHabitDefaults();
+                } else {
+                    habitSettings.classList.add('hide');
+                    taskCreationBox.classList.remove('has-habit');
+
+                    setTimeout(() => {
+                        habitSettings.style.display = 'none';
+                        habitSettings.classList.remove('hide', 'show');
+                    }, 300);
+                }
+            });
+        }
+
+        // Smart defaults based on task title/description
+        function autoSetHabitDefaults() {
+            const title = taskTitle.value.toLowerCase();
+            const description = taskDescription.value.toLowerCase();
+            const content = title + ' ' + description;
+
+            // Set category based on keywords
+            if (content.includes('exercise') || content.includes('workout') || content.includes('run') ||
+                content.includes('gym') || content.includes('water') || content.includes('sleep')) {
+                habitCategorySelect.value = 'health';
+            } else if (content.includes('read') || content.includes('study') || content.includes('learn') ||
+                content.includes('course') || content.includes('book')) {
+                habitCategorySelect.value = 'learning';
+            } else if (content.includes('work') || content.includes('project') || content.includes('task') ||
+                content.includes('meeting') || content.includes('email')) {
+                habitCategorySelect.value = 'productivity';
+            } else if (content.includes('call') || content.includes('friend') || content.includes('family') ||
+                content.includes('social')) {
+                habitCategorySelect.value = 'social';
+            } else {
+                habitCategorySelect.value = 'personal';
+            }
+
+            // Set unit based on keywords
+            if (content.includes('minute') || content.includes('min')) {
+                habitUnitSelect.value = 'minutes';
+                const match = content.match(/(\d+)\s*min/);
+                if (match) habitTargetInput.value = match[1];
+            } else if (content.includes('hour') || content.includes('hr')) {
+                habitUnitSelect.value = 'hours';
+                const match = content.match(/(\d+)\s*hour/);
+                if (match) habitTargetInput.value = match[1];
+            } else if (content.includes('page') || content.includes('pages')) {
+                habitUnitSelect.value = 'pages';
+                const match = content.match(/(\d+)\s*page/);
+                if (match) habitTargetInput.value = match[1];
+            } else if (content.includes('glass') || content.includes('water') || content.includes('drink')) {
+                habitUnitSelect.value = 'glasses';
+                const match = content.match(/(\d+)\s*glass/);
+                if (match) habitTargetInput.value = match[1];
+            } else if (content.includes('step') || content.includes('walk')) {
+                habitUnitSelect.value = 'steps';
+                const match = content.match(/(\d+)\s*step/);
+                if (match) habitTargetInput.value = match[1];
+            }
+        }
+
+        // Update smart defaults when title changes
+        taskTitle.addEventListener('input', function() {
+            if (makeHabitCheckbox && makeHabitCheckbox.checked) {
+                autoSetHabitDefaults();
+            }
+        });
+
+        taskDescription.addEventListener('input', function() {
+            if (makeHabitCheckbox && makeHabitCheckbox.checked) {
+                autoSetHabitDefaults();
+            }
+        });
     }
 
     function setupSortingEvents() {
@@ -563,6 +658,33 @@ document.addEventListener("DOMContentLoaded", function() {
                 isHabit: false // Initialize habit flag
             };
 
+            // Check if user wants to make this a habit
+            const makeHabitCheckbox = document.getElementById('make-habit-checkbox');
+            const shouldCreateHabit = makeHabitCheckbox && makeHabitCheckbox.checked;
+
+            if (shouldCreateHabit) {
+                // Get habit settings
+                const habitFrequencySelect = document.getElementById('habit-frequency-select');
+                const habitTargetInput = document.getElementById('habit-target-input');
+                const habitUnitSelect = document.getElementById('habit-unit-select');
+                const habitCategorySelect = document.getElementById('habit-category-select');
+
+                // Create habit data
+                const habitData = {
+                    frequency: habitFrequencySelect ? habitFrequencySelect.value : 'daily',
+                    target: habitTargetInput ? parseInt(habitTargetInput.value) || 1 : 1,
+                    unit: habitUnitSelect ? habitUnitSelect.value : 'times',
+                    category: habitCategorySelect ? habitCategorySelect.value : 'personal'
+                };
+
+                // Mark task as habit
+                newTask.isHabit = true;
+                newTask.habitData = habitData;
+
+                // Create the habit in the habits system
+                createHabitFromTaskDirect(newTask, habitData);
+            }
+
             // Add task to global array
             tasks.push(newTask);
 
@@ -576,6 +698,14 @@ document.addEventListener("DOMContentLoaded", function() {
             // Save tasks to localStorage
             saveTasks();
 
+            // Show success message
+            if (shouldCreateHabit) {
+                showTaskNotification('Task created and added as habit!', 'success');
+                showHabitCreationSuccess();
+            } else {
+                showTaskNotification('Task created successfully!', 'success');
+            }
+
             // Reset form
             clearTaskForm();
 
@@ -586,6 +716,65 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
+    // NEW: Create habit directly from task with habit data
+    function createHabitFromTaskDirect(task, habitData) {
+        const newHabit = {
+            id: Date.now() + Math.random(), // Ensure unique ID
+            title: task.title,
+            description: task.description || '',
+            category: habitData.category,
+            frequency: habitData.frequency,
+            target: habitData.target,
+            unit: habitData.unit,
+            createdAt: new Date().toISOString(),
+            completions: {},
+            streak: 0,
+            bestStreak: 0,
+            reminder: task.reminder || null,
+            isActive: true,
+            sourceTaskId: task.id
+        };
+
+        // Load existing habits
+        const savedHabits = localStorage.getItem('habits');
+        const existingHabits = savedHabits ? JSON.parse(savedHabits) : [];
+
+        // Add new habit
+        existingHabits.push(newHabit);
+        localStorage.setItem('habits', JSON.stringify(existingHabits));
+
+        console.log('✅ Habit created from task:', newHabit);
+    }
+
+    // NEW: Show habit creation success indicator
+    function showHabitCreationSuccess() {
+        const habitSettings = document.getElementById('habit-settings');
+        if (!habitSettings) return;
+
+        // Remove any existing success indicator
+        const existingSuccess = habitSettings.querySelector('.habit-creation-success');
+        if (existingSuccess) {
+            existingSuccess.remove();
+        }
+
+        // Create success indicator
+        const successIndicator = document.createElement('div');
+        successIndicator.className = 'habit-creation-success';
+        successIndicator.innerHTML = `
+            <i class="fas fa-check-circle"></i>
+            <span>Habit will be tracked on the Habits page!</span>
+        `;
+
+        habitSettings.appendChild(successIndicator);
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            if (successIndicator.parentNode) {
+                successIndicator.remove();
+            }
+        }, 3000);
+    }
+
     function clearTaskForm() {
         taskTitle.value = '';
         taskDescription.value = '';
@@ -594,6 +783,31 @@ document.addEventListener("DOMContentLoaded", function() {
 
         priority.value = 'priority';
         listSelect.value = 'default';
+
+        // Reset habit creation form
+        const makeHabitCheckbox = document.getElementById('make-habit-checkbox');
+        const habitSettings = document.getElementById('habit-settings');
+        const habitFrequencySelect = document.getElementById('habit-frequency-select');
+        const habitTargetInput = document.getElementById('habit-target-input');
+        const habitUnitSelect = document.getElementById('habit-unit-select');
+        const habitCategorySelect = document.getElementById('habit-category-select');
+
+        if (makeHabitCheckbox) {
+            makeHabitCheckbox.checked = false;
+        }
+
+        if (habitSettings) {
+            habitSettings.style.display = 'none';
+            habitSettings.classList.remove('show', 'hide');
+        }
+
+        if (habitFrequencySelect) habitFrequencySelect.value = 'daily';
+        if (habitTargetInput) habitTargetInput.value = '1';
+        if (habitUnitSelect) habitUnitSelect.value = 'times';
+        if (habitCategorySelect) habitCategorySelect.value = 'health';
+
+        // Remove habit styling from creation box
+        taskCreationBox.classList.remove('has-habit');
 
         // Reset heights
         taskTitle.style.height = 'auto';

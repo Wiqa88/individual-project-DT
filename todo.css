@@ -2592,3 +2592,215 @@ textarea.edit-input {
 .list-name:hover {
     background-color: rgba(30, 58, 138, 0.05);
 }
+
+/* Habit Creation Option Styles - Add to todo.css */
+
+/* Habit Creation Option Container */
+.habit-creation-option {
+    margin: 15px 0;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background-color: #f9f9f9;
+    transition: all 0.3s ease;
+}
+
+.habit-creation-option:hover {
+    background-color: #f0f8f0;
+    border-color: #4caf50;
+}
+
+/* Habit Toggle Checkbox */
+.habit-toggle {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: #333;
+    user-select: none;
+}
+
+.habit-toggle input[type="checkbox"] {
+    display: none;
+}
+
+.checkmark {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #4caf50;
+    border-radius: 3px;
+    margin-right: 10px;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.habit-toggle input[type="checkbox"]:checked + .checkmark {
+    background-color: #4caf50;
+    border-color: #4caf50;
+}
+
+.habit-toggle input[type="checkbox"]:checked + .checkmark::after {
+    content: "✓";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.habit-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+}
+
+.habit-label i {
+    color: #4caf50;
+    font-size: 16px;
+}
+
+/* Habit Settings Container */
+.habit-settings {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e0e0e0;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+        padding-top: 0;
+        margin-top: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 200px;
+        padding-top: 15px;
+        margin-top: 15px;
+    }
+}
+
+/* Habit Input Rows */
+.habit-input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.habit-input-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 120px;
+}
+
+.habit-input-group label {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.habit-input-group select,
+.habit-input-group input {
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    background-color: white;
+    transition: border-color 0.2s ease;
+}
+
+.habit-input-group select:focus,
+.habit-input-group input:focus {
+    outline: none;
+    border-color: #4caf50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+}
+
+/* Habit Settings Animation */
+.habit-settings.show {
+    display: block;
+    animation: slideDown 0.3s ease;
+}
+
+.habit-settings.hide {
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 1;
+        max-height: 200px;
+        padding-top: 15px;
+        margin-top: 15px;
+    }
+    to {
+        opacity: 0;
+        max-height: 0;
+        padding-top: 0;
+        margin-top: 0;
+    }
+}
+
+/* Responsive Design for Habit Creation */
+@media (max-width: 768px) {
+    .habit-input-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .habit-input-group {
+        min-width: 100%;
+    }
+}
+
+/* Enhanced Button Row for Habit Creation */
+.button-row {
+    margin-top: 15px;
+}
+
+/* Habit Success Indicator */
+.habit-creation-success {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: #e8f5e8;
+    border: 1px solid #4caf50;
+    border-radius: 4px;
+    color: #2e7d32;
+    font-size: 13px;
+    margin-top: 10px;
+    animation: fadeIn 0.3s ease;
+}
+
+.habit-creation-success i {
+    color: #4caf50;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Task Creation Box Enhancement for Habits */
+.task-creation-box.has-habit {
+    border-left: 4px solid #4caf50;
+}
+
+.task-creation-box.has-habit h3 {
+    color: #4caf50;
+}
+
+.task-creation-box.has-habit h3::before {
+    content: "🌱 ";
+    margin-right: 5px;
+}

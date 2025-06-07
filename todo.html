@@ -78,6 +78,57 @@
             </select>
           </div>
 
+          <!-- Habit Creation Option -->
+          <div class="habit-creation-option">
+            <label class="habit-toggle">
+              <input type="checkbox" id="make-habit-checkbox">
+              <span class="checkmark"></span>
+              <span class="habit-label">
+                <i class="fas fa-seedling"></i> Make this a habit
+              </span>
+            </label>
+
+            <!-- Habit Settings (initially hidden) -->
+            <div class="habit-settings" id="habit-settings" style="display: none;">
+              <div class="habit-input-row">
+                <div class="habit-input-group">
+                  <label for="habit-frequency-select">Frequency:</label>
+                  <select id="habit-frequency-select">
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                <div class="habit-input-group">
+                  <label for="habit-target-input">Target:</label>
+                  <input type="number" id="habit-target-input" min="1" value="1" placeholder="1">
+                </div>
+                <div class="habit-input-group">
+                  <label for="habit-unit-select">Unit:</label>
+                  <select id="habit-unit-select">
+                    <option value="times">times</option>
+                    <option value="minutes">minutes</option>
+                    <option value="hours">hours</option>
+                    <option value="pages">pages</option>
+                    <option value="glasses">glasses</option>
+                    <option value="steps">steps</option>
+                    <option value="km">kilometers</option>
+                  </select>
+                </div>
+              </div>
+              <div class="habit-input-group">
+                <label for="habit-category-select">Category:</label>
+                <select id="habit-category-select">
+                  <option value="health">Health & Fitness</option>
+                  <option value="productivity">Productivity</option>
+                  <option value="learning">Learning</option>
+                  <option value="social">Social</option>
+                  <option value="personal">Personal Care</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
           <div class="button-row">
             <button id="cancel-task">Cancel</button>
             <button id="add-task">Add</button>
