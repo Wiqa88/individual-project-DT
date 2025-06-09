@@ -1,4 +1,4 @@
-// Updated todo.js with habit integration and fixed task saving
+// Enhanced todo.js with calendar integration and unified database
 // Global state
 let tasks = [];
 let lists = [];
@@ -652,7 +652,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // ----------------------
-    // Task Management - FIXED VERSION
+    // Task Management - ENHANCED VERSION WITH CALENDAR INTEGRATION
     // ----------------------
 
     async function addTask() {
@@ -702,11 +702,49 @@ document.addEventListener("DOMContentLoaded", function() {
                 newTask.id = savedId;
                 console.log('✅ Task saved to database with ID:', savedId);
                 showTaskNotification('Task saved to database!', 'success');
+
+                // ENHANCED: Also create calendar event if task has a date
+                if (newTask.date) {
+                    try {
+                        await window.taskDB.createEventFromTask(newTask);
+                        console.log('✅ Calendar event created from task');
+                        showTaskNotification('Task saved and added to calendar!', 'success');
+                    } catch (eventError) {
+                        console.error('❌ Failed to create calendar event:', eventError);
+                        showTaskNotification('Task saved, but failed to add to calendar', 'warning');
+                    }
+                }
             } else {
                 // Fallback to generate ID and save to localStorage
                 newTask.id = Date.now();
                 console.log('📱 Database not available, using localStorage fallback');
                 showTaskNotification('Task saved locally!', 'warning');
+
+                // Create calendar event in localStorage if date exists
+                if (newTask.date) {
+                    try {
+                        const calendarEvent = {
+                            id: Date.now() + 1,
+                            title: newTask.title,
+                            description: newTask.description || '',
+                            date: newTask.date,
+                            time: newTask.reminder ? new Date(newTask.reminder).toTimeString().slice(0,5) : null,
+                            list: newTask.list !== 'N/A' ? newTask.list : null,
+                            priority: newTask.priority !== 'N/A' ? newTask.priority : null,
+                            createdFromTask: true,
+                            sourceTaskId: newTask.id,
+                            createdAt: new Date().toISOString()
+                        };
+
+                        const existingEvents = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+                        existingEvents.push(calendarEvent);
+                        localStorage.setItem('calendar-events', JSON.stringify(existingEvents));
+                        console.log('✅ Calendar event created in localStorage');
+                        showTaskNotification('Task saved and added to calendar locally!', 'warning');
+                    } catch (eventError) {
+                        console.error('❌ Failed to create local calendar event:', eventError);
+                    }
+                }
             }
 
             // Add to local tasks array
@@ -919,6 +957,9 @@ document.addEventListener("DOMContentLoaded", function() {
         // Create habit button (NEW)
         const habitButton = createHabitButton(task);
 
+        // Create calendar button (NEW)
+        const calendarButton = createCalendarButton(task);
+
         // Delete button
         const deleteButton = document.createElement("button");
         deleteButton.textContent = "×";
@@ -946,11 +987,32 @@ document.addEventListener("DOMContentLoaded", function() {
             metadata.appendChild(habitIndicator);
         }
 
+        // Add calendar indicator if task was created from calendar event
+        if (task.createdFromEvent) {
+            const calendarIndicator = document.createElement("span");
+            calendarIndicator.className = "calendar-indicator";
+            calendarIndicator.innerHTML = '<i class="fas fa-calendar"></i> From Calendar';
+            calendarIndicator.style.cssText = `
+                color: #3498db;
+                font-size: 12px;
+                background: rgba(52, 152, 219, 0.1);
+                padding: 2px 6px;
+                border-radius: 10px;
+                margin-left: 10px;
+            `;
+            metadata.appendChild(calendarIndicator);
+        }
+
         taskContent.append(titleDiv, descDiv, metadata, subtaskButton);
 
         // Add habit button if not already a habit
         if (!task.isHabit) {
             taskContent.appendChild(habitButton);
+        }
+
+        // Add calendar button if task has a date and wasn't created from calendar
+        if (task.date && !task.createdFromEvent) {
+            taskContent.appendChild(calendarButton);
         }
 
         // Render existing subtasks if any
@@ -960,6 +1022,42 @@ document.addEventListener("DOMContentLoaded", function() {
         taskItem.append(taskItemInner, deleteButton);
 
         return taskItem;
+    }
+
+    // NEW: Create calendar button function
+    function createCalendarButton(task) {
+        const calendarButton = document.createElement("button");
+        calendarButton.className = "calendar-button";
+        calendarButton.innerHTML = '<i class="fas fa-calendar-plus"></i> Add to Calendar';
+        calendarButton.style.cssText = `
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            margin-top: 5px;
+        `;
+
+        calendarButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            addTaskToCalendar(task);
+        });
+
+        calendarButton.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#e3f2fd';
+        });
+
+        calendarButton.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = 'transparent';
+        });
+
+        return calendarButton;
     }
 
     // NEW: Create habit button function
@@ -1308,7 +1406,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // This function needs to be updated to handle immediate date formatting
-    function saveFieldEdit(fieldName, value, task, displayElement, prefix = '') {
+    async function saveFieldEdit(fieldName, value, task, displayElement, prefix = '') {
         // Get the original value
         const originalValue = task[fieldName];
 
@@ -1372,6 +1470,18 @@ document.addEventListener("DOMContentLoaded", function() {
             const taskIndex = tasks.findIndex(t => t.id === task.id);
             if (taskIndex !== -1) {
                 tasks[taskIndex][fieldName] = value;
+
+                try {
+                    // Save to database if available
+                    if (window.taskDB && window.taskDB.isReady) {
+                        await window.taskDB.updateTask(tasks[taskIndex]);
+                        console.log('✅ Task updated in database');
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to update task in database:', error);
+                }
+
+                // Always save to localStorage as backup
                 saveTasks();
             }
 
@@ -1459,39 +1569,122 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }, { once: true });
     }
+// Replace your existing deleteTask function with this enhanced version:
 
     async function deleteTask(taskId, taskElement) {
         if (confirm("Are you sure you want to delete this task?")) {
+            console.log(`🗑️ TODO: Starting deletion of task ${taskId}...`);
+
             try {
-                // Remove from database first
-                if (window.taskDB && window.taskDB.isReady) {
-                    await window.taskDB.deleteTask(taskId);
-                    console.log('✅ Task deleted from database');
+                // ENHANCED DELETION LOGIC (same as our working console function)
+                console.log('📱 TODO: Using enhanced localStorage deletion...');
+
+                let localTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+                let localEvents = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+
+                console.log(`TODO: Before deletion: ${localTasks.length} tasks, ${localEvents.length} events`);
+
+                // Find the task to delete
+                const taskToDelete = localTasks.find(t => t.id == taskId);
+                if (!taskToDelete) {
+                    console.log('❌ TODO: Task not found');
+                    showTaskNotification('Task not found', 'error');
+                    return;
                 }
 
-                // Remove from global array
-                tasks = tasks.filter(task => task.id !== taskId);
+                console.log(`TODO: Found task to delete: "${taskToDelete.title}"`);
 
-                // Remove from DOM
-                taskElement.remove();
+                // Find associated events to delete (EXACT SAME LOGIC AS WORKING FUNCTION)
+                const eventsToDelete = localEvents.filter(event => {
+                    return (
+                        event.sourceTaskId == taskId ||
+                        event.associatedTaskId == taskId ||
+                        (event.createdFromTask && event.sourceTaskId == taskId) ||
+                        (taskToDelete.associatedEventId && event.id == taskToDelete.associatedEventId)
+                    );
+                });
 
-                // Save changes to localStorage as backup
-                saveTasks();
+                console.log(`TODO: Found ${eventsToDelete.length} associated events to delete`);
+                eventsToDelete.forEach(event => {
+                    console.log(`TODO: Will delete event: "${event.title}" (ID: ${event.id})`);
+                });
 
-                showTaskNotification('Task deleted successfully!', 'success');
+                // Remove the task
+                localTasks = localTasks.filter(t => t.id != taskId);
+
+                // Remove associated events
+                localEvents = localEvents.filter(event => {
+                    return !(
+                        event.sourceTaskId == taskId ||
+                        event.associatedTaskId == taskId ||
+                        (event.createdFromTask && event.sourceTaskId == taskId) ||
+                        (taskToDelete.associatedEventId && event.id == taskToDelete.associatedEventId)
+                    );
+                });
+
+                // Save back to localStorage
+                localStorage.setItem('tasks', JSON.stringify(localTasks));
+                localStorage.setItem('calendar-events', JSON.stringify(localEvents));
+
+                // Update global tasks array
+                tasks = localTasks;
+
+                console.log(`TODO: After deletion: ${localTasks.length} tasks, ${localEvents.length} events`);
+                console.log(`✅ TODO: Deleted 1 task and ${eventsToDelete.length} associated events`);
+
+                // Show appropriate notification
+                if (eventsToDelete.length > 0) {
+                    showTaskNotification(`Task and ${eventsToDelete.length} related calendar events deleted!`, 'success');
+                } else {
+                    showTaskNotification('Task deleted successfully!', 'success');
+                }
+
+                // Trigger storage events for real-time sync
+                window.dispatchEvent(new StorageEvent('storage', {
+                    key: 'tasks',
+                    newValue: JSON.stringify(localTasks)
+                }));
+
+                window.dispatchEvent(new StorageEvent('storage', {
+                    key: 'calendar-events',
+                    newValue: JSON.stringify(localEvents)
+                }));
+
+                // Remove from DOM with animation
+                if (taskElement) {
+                    taskElement.style.transition = 'all 0.3s ease';
+                    taskElement.style.opacity = '0';
+                    taskElement.style.transform = 'translateX(-100%)';
+
+                    setTimeout(() => {
+                        if (taskElement.parentNode) {
+                            taskElement.remove();
+                        }
+                    }, 300);
+                }
+
+                console.log('✅ TODO: Task deletion completed successfully');
 
             } catch (error) {
-                console.error('❌ Failed to delete task from database:', error);
+                console.error('❌ TODO: Failed to delete task:', error);
 
-                // Still remove locally
-                tasks = tasks.filter(task => task.id !== taskId);
-                taskElement.remove();
+                // Fallback: basic deletion
+                const originalLength = tasks.length;
+                tasks = tasks.filter(task => task.id != taskId);
+
+                if (taskElement && taskElement.parentNode) {
+                    taskElement.remove();
+                }
+
                 saveTasks();
-
-                showTaskNotification('Task deleted locally (database error)', 'warning');
+                showTaskNotification('Task deleted (with errors)', 'warning');
+                console.log(`📱 TODO: Fallback deletion completed. Tasks: ${originalLength} → ${tasks.length}`);
             }
         }
     }
+
+
+
 
     function sortTasks(sortType) {
         const taskElements = Array.from(taskList.querySelectorAll("li"));
@@ -1535,687 +1728,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // UPDATED: Removed date parameter from the function
-    function saveNewSubtask(task, subtaskInput, subtaskItem, subtasksContainer) {
-        const subtaskText = subtaskInput.value.trim();
-
-        if (subtaskText) {
-            // Create a new subtask object WITHOUT date field
-            const newSubtask = {
-                id: Date.now(), // Unique ID
-                text: subtaskText,
-                completed: false
-                // date field removed
-            };
-
-            // Initialize subtasks array if it doesn't exist
-            if (!task.subtasks) {
-                task.subtasks = [];
-            }
-
-            // Add to task's subtasks
-            task.subtasks.push(newSubtask);
-
-            // Remove the input field
-            subtaskInput.classList.remove('show');
-
-            // Create the permanent subtask element
-            setTimeout(() => {
-                subtaskItem.innerHTML = ''; // Clear existing content
-
-                // Create checkbox
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'subtask-checkbox';
-                checkbox.addEventListener('change', function () {
-                    newSubtask.completed = this.checked;
-
-                    // Update subtask appearance
-                    const subtaskText = subtaskItem.querySelector('.display-text');
-                    if (this.checked) {
-                        subtaskText.style.textDecoration = 'line-through';
-                        subtaskText.style.color = '#888';
-                    } else {
-                        subtaskText.style.textDecoration = 'none';
-                        subtaskText.style.color = '';
-                    }
-
-                    // Save changes
-                    saveTask(task);
-                });
-
-                // Create editable text
-                const editable = document.createElement('div');
-                editable.className = 'editable-content';
-
-                const displayText = document.createElement('div');
-                displayText.className = 'display-text';
-                displayText.textContent = newSubtask.text;
-
-                // Make display text clickable for editing
-                displayText.addEventListener('click', function (e) {
-                    e.stopPropagation(); // Stop propagation
-
-                    // Create edit input
-                    const editInput = document.createElement('textarea');
-                    editInput.className = 'expanding-input';
-                    editInput.value = newSubtask.text;
-
-                    // Replace display text with input
-                    displayText.style.display = 'none';
-                    editable.appendChild(editInput);
-
-                    // Show animation
-                    setTimeout(() => {
-                        editInput.classList.add('show');
-                        editInput.focus();
-                        autoExpand(editInput);
-                        editInput.addEventListener('input', () => autoExpand(editInput));
-                    }, 10);
-
-                    // Set up one-time click away listener
-                    function handleClickAway(e) {
-                        if (e.target !== editInput && e.target !== displayText) {
-                            saveSubtaskEdit(newSubtask, editInput, displayText, task);
-
-                            // Remove this event listener
-                            document.removeEventListener("click", handleClickAway);
-                        }
-                    }
-
-                    // Add the click away handler after a small delay
-                    setTimeout(() => {
-                        document.addEventListener("click", handleClickAway);
-                    }, 10);
-
-                    // Save on Enter or cancel on Escape
-                    editInput.addEventListener('keydown', function (e) {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            saveSubtaskEdit(newSubtask, editInput, displayText, task);
-                            document.removeEventListener("click", handleClickAway);
-                        } else if (e.key === 'Escape') {
-                            e.preventDefault();
-                            editInput.classList.remove('show');
-                            setTimeout(() => {
-                                displayText.style.display = 'block';
-                                editInput.remove();
-                            }, 300);
-                            document.removeEventListener("click", handleClickAway);
-                        }
-                    });
-                });
-
-                // Create delete button
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'delete-subtask';
-                deleteBtn.innerHTML = '×';
-                deleteBtn.addEventListener('click', function () {
-                    // Remove from task's subtasks array
-                    task.subtasks = task.subtasks.filter(st => st.id !== newSubtask.id);
-
-                    // Remove from DOM with animation
-                    subtaskItem.style.opacity = '0';
-                    subtaskItem.style.height = '0';
-                    subtaskItem.style.margin = '0';
-                    subtaskItem.style.transition = 'all 0.3s ease';
-
-                    setTimeout(() => {
-                        subtaskItem.remove();
-
-                        // Remove container if empty
-                        if (task.subtasks.length === 0) {
-                            subtasksContainer.remove();
-                        }
-
-                        // Save changes
-                        saveTask(task);
-                    }, 300);
-                });
-
-                // Assemble the subtask item (WITHOUT metadata)
-                editable.appendChild(displayText);
-                subtaskItem.appendChild(checkbox);
-                subtaskItem.appendChild(editable);
-                subtaskItem.appendChild(deleteBtn);
-
-                // Save changes
-                saveTask(task);
-            }, 300);
-        } else {
-            // If empty, just remove the item
-            subtaskInput.classList.remove('show');
-            setTimeout(() => {
-                subtaskItem.remove();
-
-                // Remove container if empty
-                if (subtasksContainer.children.length === 0) {
-                    subtasksContainer.remove();
-                }
-            }, 300);
-        }
-    }
-
-    // UPDATED: Only handles text editing, no date editing
-    function saveSubtaskEdit(subtask, editInput, displayText, task) {
-        const newText = editInput.value.trim();
-
-        if (newText) {
-            // Update subtask
-            subtask.text = newText;
-            displayText.textContent = newText;
-
-            // Save changes
-            saveTask(task);
-        }
-
-        // Hide input with animation
-        editInput.classList.remove('show');
-        setTimeout(() => {
-            displayText.style.display = 'block';
-            editInput.remove();
-        }, 300);
-    }
-
-    async function saveTask(task) {
-        // Find task in global array and update it
-        const taskIndex = tasks.findIndex(t => t.id === task.id);
-        if (taskIndex !== -1) {
-            tasks[taskIndex] = task;
-
-            try {
-                // Update in database if available
-                if (window.taskDB && window.taskDB.isReady) {
-                    await window.taskDB.updateTask(task);
-                    console.log('✅ Task updated in database');
-                }
-            } catch (error) {
-                console.error('❌ Failed to update task in database:', error);
-            }
-
-            // Always save to localStorage as backup
-            saveTasks();
-        }
-    }
-
-    // UPDATED: Removed date display from subtasks
-    function renderSubtasks(task, taskContent) {
-        // Skip if no subtasks
-        if (!task.subtasks || task.subtasks.length === 0) return;
-
-        // Create subtasks container
-        const subtasksContainer = document.createElement('div');
-        subtasksContainer.className = 'subtasks-container';
-
-        // Render each subtask
-        task.subtasks.forEach(subtask => {
-            const subtaskItem = document.createElement('div');
-            subtaskItem.className = 'subtask-item';
-
-            // Create checkbox
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.className = 'subtask-checkbox';
-            checkbox.checked = subtask.completed;
-            checkbox.addEventListener('change', function () {
-                subtask.completed = this.checked;
-
-                // Update subtask appearance
-                const subtaskText = subtaskItem.querySelector('.display-text');
-                if (this.checked) {
-                    subtaskText.style.textDecoration = 'line-through';
-                    subtaskText.style.color = '#888';
-                } else {
-                    subtaskText.style.textDecoration = 'none';
-                    subtaskText.style.color = '';
-                }
-
-                // Save changes
-                saveTask(task);
-            });
-
-            // Create editable text
-            const editable = document.createElement('div');
-            editable.className = 'editable-content';
-
-            const displayText = document.createElement('div');
-            displayText.className = 'display-text';
-            displayText.textContent = subtask.text;
-
-            // Apply styling for completed subtasks
-            if (subtask.completed) {
-                displayText.style.textDecoration = 'line-through';
-                displayText.style.color = '#888';
-            }
-
-            // Make display text clickable for editing
-            displayText.addEventListener('click', function (e) {
-                e.stopPropagation(); // Stop propagation
-
-                // Create edit input
-                const editInput = document.createElement('textarea');
-                editInput.className = 'expanding-input';
-                editInput.value = subtask.text;
-
-                // Replace display text with input
-                displayText.style.display = 'none';
-                editable.appendChild(editInput);
-
-                // Show animation
-                setTimeout(() => {
-                    editInput.classList.add('show');
-                    editInput.focus();
-                    autoExpand(editInput);
-                    editInput.addEventListener('input', () => autoExpand(editInput));
-                }, 10);
-
-                // Set up one-time click away listener
-                function handleClickAway(e) {
-                    if (e.target !== editInput && e.target !== displayText) {
-                        saveSubtaskEdit(subtask, editInput, displayText, task);
-
-                        // Remove this event listener
-                        document.removeEventListener("click", handleClickAway);
-                    }
-                }
-
-                // Add the click away handler after a small delay
-                setTimeout(() => {
-                    document.addEventListener("click", handleClickAway);
-                }, 10);
-
-                // Save on Enter or cancel on Escape
-                editInput.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        saveSubtaskEdit(subtask, editInput, displayText, task);
-                        document.removeEventListener("click", handleClickAway);
-                    } else if (e.key === 'Escape') {
-                        e.preventDefault();
-                        editInput.classList.remove('show');
-                        setTimeout(() => {
-                            displayText.style.display = 'block';
-                            editInput.remove();
-                        }, 300);
-                        document.removeEventListener("click", handleClickAway);
-                    }
-                });
-            });
-
-            // Create delete button
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-subtask';
-            deleteBtn.innerHTML = '×';
-            deleteBtn.addEventListener('click', function () {
-                // Remove from task's subtasks array
-                task.subtasks = task.subtasks.filter(st => st.id !== subtask.id);
-
-                // Remove from DOM with animation
-                subtaskItem.style.opacity = '0';
-                subtaskItem.style.height = '0';
-                subtaskItem.style.margin = '0';
-                subtaskItem.style.transition = 'all 0.3s ease';
-
-                setTimeout(() => {
-                    subtaskItem.remove();
-
-                    // Remove container if empty
-                    if (task.subtasks.length === 0) {
-                        subtasksContainer.remove();
-                    }
-
-                    // Save changes
-                    saveTask(task);
-                }, 300);
-            });
-
-            // Assemble the subtask item (WITHOUT metadata)
-            editable.appendChild(displayText);
-            subtaskItem.appendChild(checkbox);
-            subtaskItem.appendChild(editable);
-            subtaskItem.appendChild(deleteBtn);
-            subtasksContainer.appendChild(subtaskItem);
-        });
-
-        // Add to the task content
-        taskContent.appendChild(subtasksContainer);
-    }
-
-    // NEW: Create a function for the Add Subtask button
-    function createAddSubtaskButton(task, taskContent) {
-        const subtaskButton = document.createElement("button");
-        subtaskButton.className = "subtask-button";
-        subtaskButton.innerHTML = '<i class="fas fa-plus"></i> Add Subtask';
-        subtaskButton.addEventListener("click", function (e) {
-            e.stopPropagation(); // Prevent event bubbling
-
-            // Check if there's already a subtasks container
-            let subtasksContainer = taskContent.querySelector('.subtasks-container');
-            if (!subtasksContainer) {
-                // Create subtasks container if it doesn't exist
-                subtasksContainer = document.createElement('div');
-                subtasksContainer.className = 'subtasks-container';
-                taskContent.appendChild(subtasksContainer);
-
-                // Initialize subtasks array if it doesn't exist
-                if (!task.subtasks) {
-                    task.subtasks = [];
-                }
-            }
-
-            // Create a new subtask creation form
-            const subtaskItem = document.createElement('div');
-            subtaskItem.className = 'subtask-item';
-
-            // Create checkbox
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.className = 'subtask-checkbox';
-
-            // Create expanding input for new subtask
-            const subtaskInput = document.createElement('textarea');
-            subtaskInput.className = 'expanding-input';
-            subtaskInput.placeholder = 'Enter subtask...';
-            subtaskInput.style.display = 'block';
-
-            // Add the subtask creation elements to DOM (NO date input row)
-            subtaskItem.appendChild(checkbox);
-            subtaskItem.appendChild(subtaskInput);
-            subtasksContainer.appendChild(subtaskItem);
-
-            // Add subtask add and cancel buttons
-            const subtaskButtonRow = document.createElement('div');
-            subtaskButtonRow.className = 'subtask-button-row';
-            subtaskButtonRow.style.marginTop = '8px';
-
-            const cancelSubtaskBtn = document.createElement('button');
-            cancelSubtaskBtn.textContent = 'Cancel';
-            cancelSubtaskBtn.className = 'cancel-subtask-btn';
-            cancelSubtaskBtn.style.cssText = 'padding: 5px 10px; background: #ccc; color: #333; border: none; border-radius: 3px; cursor: pointer;';
-
-            const addSubtaskBtn = document.createElement('button');
-            addSubtaskBtn.textContent = 'Add';
-            addSubtaskBtn.className = 'add-subtask-btn';
-            addSubtaskBtn.style.cssText = 'padding: 5px 10px; background: #1e3a8a; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 5px;';
-
-            subtaskButtonRow.appendChild(cancelSubtaskBtn);
-            subtaskButtonRow.appendChild(addSubtaskBtn);
-            subtaskItem.appendChild(subtaskButtonRow);
-
-            // Focus and show animation
-            setTimeout(() => {
-                subtaskInput.classList.add('show');
-                subtaskInput.focus();
-                autoExpand(subtaskInput);
-                subtaskInput.addEventListener('input', () => autoExpand(subtaskInput));
-            }, 10);
-
-            // Cancel button handler
-            cancelSubtaskBtn.addEventListener('click', function () {
-                subtaskInput.classList.remove('show');
-                setTimeout(() => {
-                    subtaskItem.remove();
-                    // Remove container if empty
-                    if (subtasksContainer.children.length === 0) {
-                        subtasksContainer.remove();
-                    }
-                }, 300);
-            });
-
-            // Add button handler - Note: no date is passed
-            addSubtaskBtn.addEventListener('click', function () {
-                saveNewSubtask(
-                    task,
-                    subtaskInput,
-                    subtaskItem,
-                    subtasksContainer
-                );
-            });
-
-            // Save on Enter
-            subtaskInput.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    saveNewSubtask(
-                        task,
-                        subtaskInput,
-                        subtaskItem,
-                        subtasksContainer
-                    );
-                } else if (e.key === 'Escape') {
-                    subtaskInput.classList.remove('show');
-                    setTimeout(() => {
-                        subtaskItem.remove();
-                        // Remove container if empty
-                        if (subtasksContainer.children.length === 0) {
-                            subtasksContainer.remove();
-                        }
-                    }, 300);
-                }
-            });
-        });
-
-        return subtaskButton;
-    }
-
-    // ----------------------
-    // List Management
-    // ----------------------
-    function addNewList() {
-        const newListName = prompt("Enter a name for the new list:");
-
-        if (newListName && newListName.trim()) {
-            // Check if list already exists
-            if (lists.includes(newListName.trim())) {
-                alert("A list with this name already exists");
-                return;
-            }
-
-            // Add to global array
-            lists.push(newListName.trim());
-
-            // Save and update UI
-            saveLists();
-            renderLists();
-            updateListDropdown();
-        }
-    }
-
-    function renderLists() {
-        listsContainer.innerHTML = '';
-
-        lists.forEach((listName, index) => {
-            const listItem = document.createElement("div");
-            listItem.classList.add("list-item");
-
-            // List name (clickable)
-            const listName_el = document.createElement("span");
-            listName_el.className = "list-name";
-            listName_el.dataset.index = index;
-            listName_el.textContent = listName;
-            listName_el.addEventListener('click', function () {
-                applyViewTransition(() => {
-                    filterTasksByList(listName);
-                });
-            });
-
-            // List actions (edit, delete)
-            const listActions = document.createElement("div");
-            listActions.className = "list-actions";
-
-            // Edit button
-            const editBtn = document.createElement("button");
-            editBtn.className = "list-edit-btn";
-            editBtn.dataset.index = index;
-            editBtn.textContent = "Edit";
-            editBtn.addEventListener('click', function () {
-                editList(index, listItem);
-            });
-
-            // Delete button
-            const deleteBtn = document.createElement("button");
-            deleteBtn.className = "list-delete-btn";
-            deleteBtn.dataset.index = index;
-            deleteBtn.textContent = "Delete";
-            deleteBtn.addEventListener('click', function () {
-                deleteList(index, listName);
-            });
-
-            // Assemble list item
-            listActions.append(editBtn, deleteBtn);
-            listItem.append(listName_el, listActions);
-            listsContainer.appendChild(listItem);
-        });
-    }
-
-    function editList(index, listItem) {
-        const listNameEl = listItem.querySelector('.list-name');
-        const currentName = lists[index];
-
-        // Create edit input
-        const editInput = document.createElement("input");
-        editInput.className = "list-edit-input";
-        editInput.value = currentName;
-
-        // Replace list name with input
-        listNameEl.style.display = 'none';
-        listItem.insertBefore(editInput, listNameEl);
-        editInput.focus();
-
-        // Setup save on enter or blur
-        editInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-                saveListEdit(index, editInput.value, listItem, listNameEl, editInput);
-            } else if (e.key === 'Escape') {
-                cancelListEdit(listItem, listNameEl, editInput);
-            }
-        });
-
-        editInput.addEventListener('blur', function () {
-            saveListEdit(index, editInput.value, listItem, listNameEl, editInput);
-        });
-    }
-
-    function saveListEdit(index, newName, listItem, listNameEl, editInput) {
-        newName = newName.trim();
-
-        if (newName && newName !== lists[index]) {
-            // Check if the new name already exists
-            if (lists.includes(newName)) {
-                alert("A list with this name already exists");
-                cancelListEdit(listItem, listNameEl, editInput);
-                return;
-            }
-
-            const oldName = lists[index];
-            lists[index] = newName;
-
-            // Update tasks with this list name
-            updateTasksWithNewListName(oldName, newName);
-
-            // Save and update UI
-            saveLists();
-            updateListDropdown();
-        }
-
-        // Restore display
-        listNameEl.textContent = lists[index];
-        listNameEl.style.display = '';
-        editInput.remove();
-    }
-
-    function cancelListEdit(listItem, listNameEl, editInput) {
-        listNameEl.style.display = '';
-        editInput.remove();
-    }
-
-    function deleteList(index, listName) {
-        // Prevent deleting default lists
-        if (['Personal', 'Work', 'Shopping'].includes(listName)) {
-            alert('Cannot delete default lists');
-            return;
-        }
-
-        if (confirm(`Are you sure you want to delete the list "${listName}"?`)) {
-            // Remove from global array
-            lists.splice(index, 1);
-
-            // Update tasks that were in this list
-            updateTasksWithDeletedList(listName);
-
-            // Save and update UI
-            saveLists();
-            renderLists();
-            updateListDropdown();
-        }
-    }
-
-    function updateTasksWithNewListName(oldName, newName) {
-        let tasksUpdated = false;
-
-        // Update in memory tasks
-        tasks.forEach(task => {
-            if (task.list === oldName) {
-                task.list = newName;
-                tasksUpdated = true;
-            }
-        });
-
-        // Update task elements in the DOM
-        document.querySelectorAll(".task-item").forEach(taskItem => {
-            const listDisplay = taskItem.querySelector("[data-field='list'] .display-text");
-            if (listDisplay && listDisplay.textContent === `List: ${oldName}`) {
-                listDisplay.textContent = `List: ${newName}`;
-            }
-        });
-
-        if (tasksUpdated) {
-            saveTasks();
-        }
-    }
-
-    function updateTasksWithDeletedList(deletedListName) {
-        let tasksUpdated = false;
-
-        // Update in memory tasks
-        tasks.forEach(task => {
-            if (task.list === deletedListName) {
-                task.list = 'N/A';
-                tasksUpdated = true;
-            }
-        });
-
-        // Update task elements in the DOM
-        document.querySelectorAll(".task-item").forEach(taskItem => {
-            const listDisplay = taskItem.querySelector("[data-field='list'] .display-text");
-            if (listDisplay && listDisplay.textContent === `List: ${deletedListName}`) {
-                listDisplay.textContent = "List: N/A";
-            }
-        });
-
-        if (tasksUpdated) {
-            saveTasks();
-        }
-    }
-
-    function updateListDropdown() {
-        // Clear current options except the default one
-        while (listSelect.options.length > 1) {
-            listSelect.remove(1);
-        }
-
-        // Add list options
-        lists.forEach(listName => {
-            const option = document.createElement("option");
-            option.value = listName;
-            option.textContent = listName;
-            listSelect.appendChild(option);
-        });
-    }
-
-    // ----------------------
-    // Persistence Functions - UPDATED WITH DATABASE SUPPORT
-    // ----------------------
+    // ENHANCED DATA LOADING WITH DATABASE INTEGRATION
     async function loadTasks() {
         console.log('📂 Loading tasks...');
 
@@ -2310,18 +1823,579 @@ document.addEventListener("DOMContentLoaded", function() {
         localStorage.setItem("custom-lists", JSON.stringify(lists));
     }
 
+    // SUBTASK FUNCTIONS
+    function createAddSubtaskButton(task, taskContent) {
+        const subtaskButton = document.createElement("button");
+        subtaskButton.className = "subtask-button";
+        subtaskButton.innerHTML = '<i class="fas fa-plus"></i> Add Subtask';
+        subtaskButton.addEventListener("click", function (e) {
+            e.stopPropagation();
+
+            let subtasksContainer = taskContent.querySelector('.subtasks-container');
+            if (!subtasksContainer) {
+                subtasksContainer = document.createElement('div');
+                subtasksContainer.className = 'subtasks-container';
+                taskContent.appendChild(subtasksContainer);
+
+                if (!task.subtasks) {
+                    task.subtasks = [];
+                }
+            }
+
+            const subtaskItem = document.createElement('div');
+            subtaskItem.className = 'subtask-item';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'subtask-checkbox';
+
+            const subtaskInput = document.createElement('textarea');
+            subtaskInput.className = 'expanding-input';
+            subtaskInput.placeholder = 'Enter subtask...';
+            subtaskInput.style.display = 'block';
+
+            subtaskItem.appendChild(checkbox);
+            subtaskItem.appendChild(subtaskInput);
+            subtasksContainer.appendChild(subtaskItem);
+
+            const subtaskButtonRow = document.createElement('div');
+            subtaskButtonRow.className = 'subtask-button-row';
+            subtaskButtonRow.style.marginTop = '8px';
+
+            const cancelSubtaskBtn = document.createElement('button');
+            cancelSubtaskBtn.textContent = 'Cancel';
+            cancelSubtaskBtn.className = 'cancel-subtask-btn';
+            cancelSubtaskBtn.style.cssText = 'padding: 5px 10px; background: #ccc; color: #333; border: none; border-radius: 3px; cursor: pointer;';
+
+            const addSubtaskBtn = document.createElement('button');
+            addSubtaskBtn.textContent = 'Add';
+            addSubtaskBtn.className = 'add-subtask-btn';
+            addSubtaskBtn.style.cssText = 'padding: 5px 10px; background: #1e3a8a; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 5px;';
+
+            subtaskButtonRow.appendChild(cancelSubtaskBtn);
+            subtaskButtonRow.appendChild(addSubtaskBtn);
+            subtaskItem.appendChild(subtaskButtonRow);
+
+            setTimeout(() => {
+                subtaskInput.classList.add('show');
+                subtaskInput.focus();
+                autoExpand(subtaskInput);
+                subtaskInput.addEventListener('input', () => autoExpand(subtaskInput));
+            }, 10);
+
+            cancelSubtaskBtn.addEventListener('click', function () {
+                subtaskInput.classList.remove('show');
+                setTimeout(() => {
+                    subtaskItem.remove();
+                    if (subtasksContainer.children.length === 0) {
+                        subtasksContainer.remove();
+                    }
+                }, 300);
+            });
+
+            addSubtaskBtn.addEventListener('click', function () {
+                saveNewSubtask(task, subtaskInput, subtaskItem, subtasksContainer);
+            });
+
+            subtaskInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    saveNewSubtask(task, subtaskInput, subtaskItem, subtasksContainer);
+                } else if (e.key === 'Escape') {
+                    subtaskInput.classList.remove('show');
+                    setTimeout(() => {
+                        subtaskItem.remove();
+                        if (subtasksContainer.children.length === 0) {
+                            subtasksContainer.remove();
+                        }
+                    }, 300);
+                }
+            });
+        });
+
+        return subtaskButton;
+    }
+
+    function saveNewSubtask(task, subtaskInput, subtaskItem, subtasksContainer) {
+        const subtaskText = subtaskInput.value.trim();
+
+        if (subtaskText) {
+            const newSubtask = {
+                id: Date.now(),
+                text: subtaskText,
+                completed: false
+            };
+
+            if (!task.subtasks) {
+                task.subtasks = [];
+            }
+
+            task.subtasks.push(newSubtask);
+
+            subtaskInput.classList.remove('show');
+
+            setTimeout(() => {
+                subtaskItem.innerHTML = '';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'subtask-checkbox';
+                checkbox.addEventListener('change', function () {
+                    newSubtask.completed = this.checked;
+
+                    const subtaskText = subtaskItem.querySelector('.display-text');
+                    if (this.checked) {
+                        subtaskText.style.textDecoration = 'line-through';
+                        subtaskText.style.color = '#888';
+                    } else {
+                        subtaskText.style.textDecoration = 'none';
+                        subtaskText.style.color = '';
+                    }
+
+                    saveTask(task);
+                });
+
+                const editable = document.createElement('div');
+                editable.className = 'editable-content';
+
+                const displayText = document.createElement('div');
+                displayText.className = 'display-text';
+                displayText.textContent = newSubtask.text;
+
+                displayText.addEventListener('click', function (e) {
+                    e.stopPropagation();
+
+                    const editInput = document.createElement('textarea');
+                    editInput.className = 'expanding-input';
+                    editInput.value = newSubtask.text;
+
+                    displayText.style.display = 'none';
+                    editable.appendChild(editInput);
+
+                    setTimeout(() => {
+                        editInput.classList.add('show');
+                        editInput.focus();
+                        autoExpand(editInput);
+                        editInput.addEventListener('input', () => autoExpand(editInput));
+                    }, 10);
+
+                    function handleClickAway(e) {
+                        if (e.target !== editInput && e.target !== displayText) {
+                            saveSubtaskEdit(newSubtask, editInput, displayText, task);
+                            document.removeEventListener("click", handleClickAway);
+                        }
+                    }
+
+                    setTimeout(() => {
+                        document.addEventListener("click", handleClickAway);
+                    }, 10);
+
+                    editInput.addEventListener('keydown', function (e) {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            saveSubtaskEdit(newSubtask, editInput, displayText, task);
+                            document.removeEventListener("click", handleClickAway);
+                        } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            editInput.classList.remove('show');
+                            setTimeout(() => {
+                                displayText.style.display = 'block';
+                                editInput.remove();
+                            }, 300);
+                            document.removeEventListener("click", handleClickAway);
+                        }
+                    });
+                });
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-subtask';
+                deleteBtn.innerHTML = '×';
+                deleteBtn.addEventListener('click', function () {
+                    task.subtasks = task.subtasks.filter(st => st.id !== newSubtask.id);
+
+                    subtaskItem.style.opacity = '0';
+                    subtaskItem.style.height = '0';
+                    subtaskItem.style.margin = '0';
+                    subtaskItem.style.transition = 'all 0.3s ease';
+
+                    setTimeout(() => {
+                        subtaskItem.remove();
+
+                        if (task.subtasks.length === 0) {
+                            subtasksContainer.remove();
+                        }
+
+                        saveTask(task);
+                    }, 300);
+                });
+
+                editable.appendChild(displayText);
+                subtaskItem.appendChild(checkbox);
+                subtaskItem.appendChild(editable);
+                subtaskItem.appendChild(deleteBtn);
+
+                saveTask(task);
+            }, 300);
+        } else {
+            subtaskInput.classList.remove('show');
+            setTimeout(() => {
+                subtaskItem.remove();
+
+                if (subtasksContainer.children.length === 0) {
+                    subtasksContainer.remove();
+                }
+            }, 300);
+        }
+    }
+
+    function saveSubtaskEdit(subtask, editInput, displayText, task) {
+        const newText = editInput.value.trim();
+
+        if (newText) {
+            subtask.text = newText;
+            displayText.textContent = newText;
+            saveTask(task);
+        }
+
+        editInput.classList.remove('show');
+        setTimeout(() => {
+            displayText.style.display = 'block';
+            editInput.remove();
+        }, 300);
+    }
+
+    async function saveTask(task) {
+        const taskIndex = tasks.findIndex(t => t.id === task.id);
+        if (taskIndex !== -1) {
+            tasks[taskIndex] = task;
+
+            try {
+                if (window.taskDB && window.taskDB.isReady) {
+                    await window.taskDB.updateTask(task);
+                    console.log('✅ Task updated in database');
+                }
+            } catch (error) {
+                console.error('❌ Failed to update task in database:', error);
+            }
+
+            saveTasks();
+        }
+    }
+
+    function renderSubtasks(task, taskContent) {
+        if (!task.subtasks || task.subtasks.length === 0) return;
+
+        const subtasksContainer = document.createElement('div');
+        subtasksContainer.className = 'subtasks-container';
+
+        task.subtasks.forEach(subtask => {
+            const subtaskItem = document.createElement('div');
+            subtaskItem.className = 'subtask-item';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'subtask-checkbox';
+            checkbox.checked = subtask.completed;
+            checkbox.addEventListener('change', function () {
+                subtask.completed = this.checked;
+
+                const subtaskText = subtaskItem.querySelector('.display-text');
+                if (this.checked) {
+                    subtaskText.style.textDecoration = 'line-through';
+                    subtaskText.style.color = '#888';
+                } else {
+                    subtaskText.style.textDecoration = 'none';
+                    subtaskText.style.color = '';
+                }
+
+                saveTask(task);
+            });
+
+            const editable = document.createElement('div');
+            editable.className = 'editable-content';
+
+            const displayText = document.createElement('div');
+            displayText.className = 'display-text';
+            displayText.textContent = subtask.text;
+
+            if (subtask.completed) {
+                displayText.style.textDecoration = 'line-through';
+                displayText.style.color = '#888';
+            }
+
+            displayText.addEventListener('click', function (e) {
+                e.stopPropagation();
+
+                const editInput = document.createElement('textarea');
+                editInput.className = 'expanding-input';
+                editInput.value = subtask.text;
+
+                displayText.style.display = 'none';
+                editable.appendChild(editInput);
+
+                setTimeout(() => {
+                    editInput.classList.add('show');
+                    editInput.focus();
+                    autoExpand(editInput);
+                    editInput.addEventListener('input', () => autoExpand(editInput));
+                }, 10);
+
+                function handleClickAway(e) {
+                    if (e.target !== editInput && e.target !== displayText) {
+                        saveSubtaskEdit(subtask, editInput, displayText, task);
+                        document.removeEventListener("click", handleClickAway);
+                    }
+                }
+
+                setTimeout(() => {
+                    document.addEventListener("click", handleClickAway);
+                }, 10);
+
+                editInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        saveSubtaskEdit(subtask, editInput, displayText, task);
+                        document.removeEventListener("click", handleClickAway);
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        editInput.classList.remove('show');
+                        setTimeout(() => {
+                            displayText.style.display = 'block';
+                            editInput.remove();
+                        }, 300);
+                        document.removeEventListener("click", handleClickAway);
+                    }
+                });
+            });
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-subtask';
+            deleteBtn.innerHTML = '×';
+            deleteBtn.addEventListener('click', function () {
+                task.subtasks = task.subtasks.filter(st => st.id !== subtask.id);
+
+                subtaskItem.style.opacity = '0';
+                subtaskItem.style.height = '0';
+                subtaskItem.style.margin = '0';
+                subtaskItem.style.transition = 'all 0.3s ease';
+
+                setTimeout(() => {
+                    subtaskItem.remove();
+
+                    if (task.subtasks.length === 0) {
+                        subtasksContainer.remove();
+                    }
+
+                    saveTask(task);
+                }, 300);
+            });
+
+            editable.appendChild(displayText);
+            subtaskItem.appendChild(checkbox);
+            subtaskItem.appendChild(editable);
+            subtaskItem.appendChild(deleteBtn);
+            subtasksContainer.appendChild(subtaskItem);
+        });
+
+        taskContent.appendChild(subtasksContainer);
+    }
+
+    // ----------------------
+    // List Management
+    // ----------------------
+    function addNewList() {
+        const newListName = prompt("Enter a name for the new list:");
+
+        if (newListName && newListName.trim()) {
+            if (lists.includes(newListName.trim())) {
+                alert("A list with this name already exists");
+                return;
+            }
+
+            lists.push(newListName.trim());
+            saveLists();
+            renderLists();
+            updateListDropdown();
+        }
+    }
+
+    function renderLists() {
+        listsContainer.innerHTML = '';
+
+        lists.forEach((listName, index) => {
+            const listItem = document.createElement("div");
+            listItem.classList.add("list-item");
+
+            const listName_el = document.createElement("span");
+            listName_el.className = "list-name";
+            listName_el.dataset.index = index;
+            listName_el.textContent = listName;
+            listName_el.addEventListener('click', function () {
+                applyViewTransition(() => {
+                    filterTasksByList(listName);
+                });
+            });
+
+            const listActions = document.createElement("div");
+            listActions.className = "list-actions";
+
+            const editBtn = document.createElement("button");
+            editBtn.className = "list-edit-btn";
+            editBtn.dataset.index = index;
+            editBtn.textContent = "Edit";
+            editBtn.addEventListener('click', function () {
+                editList(index, listItem);
+            });
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "list-delete-btn";
+            deleteBtn.dataset.index = index;
+            deleteBtn.textContent = "Delete";
+            deleteBtn.addEventListener('click', function () {
+                deleteList(index, listName);
+            });
+
+            listActions.append(editBtn, deleteBtn);
+            listItem.append(listName_el, listActions);
+            listsContainer.appendChild(listItem);
+        });
+    }
+
+    function editList(index, listItem) {
+        const listNameEl = listItem.querySelector('.list-name');
+        const currentName = lists[index];
+
+        const editInput = document.createElement("input");
+        editInput.className = "list-edit-input";
+        editInput.value = currentName;
+
+        listNameEl.style.display = 'none';
+        listItem.insertBefore(editInput, listNameEl);
+        editInput.focus();
+
+        editInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                saveListEdit(index, editInput.value, listItem, listNameEl, editInput);
+            } else if (e.key === 'Escape') {
+                cancelListEdit(listItem, listNameEl, editInput);
+            }
+        });
+
+        editInput.addEventListener('blur', function () {
+            saveListEdit(index, editInput.value, listItem, listNameEl, editInput);
+        });
+    }
+
+    function saveListEdit(index, newName, listItem, listNameEl, editInput) {
+        newName = newName.trim();
+
+        if (newName && newName !== lists[index]) {
+            if (lists.includes(newName)) {
+                alert("A list with this name already exists");
+                cancelListEdit(listItem, listNameEl, editInput);
+                return;
+            }
+
+            const oldName = lists[index];
+            lists[index] = newName;
+
+            updateTasksWithNewListName(oldName, newName);
+            saveLists();
+            updateListDropdown();
+        }
+
+        listNameEl.textContent = lists[index];
+        listNameEl.style.display = '';
+        editInput.remove();
+    }
+
+    function cancelListEdit(listItem, listNameEl, editInput) {
+        listNameEl.style.display = '';
+        editInput.remove();
+    }
+
+    function deleteList(index, listName) {
+        if (['Personal', 'Work', 'Shopping'].includes(listName)) {
+            alert('Cannot delete default lists');
+            return;
+        }
+
+        if (confirm(`Are you sure you want to delete the list "${listName}"?`)) {
+            lists.splice(index, 1);
+            updateTasksWithDeletedList(listName);
+            saveLists();
+            renderLists();
+            updateListDropdown();
+        }
+    }
+
+    function updateTasksWithNewListName(oldName, newName) {
+        let tasksUpdated = false;
+
+        tasks.forEach(task => {
+            if (task.list === oldName) {
+                task.list = newName;
+                tasksUpdated = true;
+            }
+        });
+
+        document.querySelectorAll(".task-item").forEach(taskItem => {
+            const listDisplay = taskItem.querySelector("[data-field='list'] .display-text");
+            if (listDisplay && listDisplay.textContent === `List: ${oldName}`) {
+                listDisplay.textContent = `List: ${newName}`;
+            }
+        });
+
+        if (tasksUpdated) {
+            saveTasks();
+        }
+    }
+
+    function updateTasksWithDeletedList(deletedListName) {
+        let tasksUpdated = false;
+
+        tasks.forEach(task => {
+            if (task.list === deletedListName) {
+                task.list = 'N/A';
+                tasksUpdated = true;
+            }
+        });
+
+        document.querySelectorAll(".task-item").forEach(taskItem => {
+            const listDisplay = taskItem.querySelector("[data-field='list'] .display-text");
+            if (listDisplay && listDisplay.textContent === `List: ${deletedListName}`) {
+                listDisplay.textContent = "List: N/A";
+            }
+        });
+
+        if (tasksUpdated) {
+            saveTasks();
+        }
+    }
+
+    function updateListDropdown() {
+        while (listSelect.options.length > 1) {
+            listSelect.remove(1);
+        }
+
+        lists.forEach(listName => {
+            const option = document.createElement("option");
+            option.value = listName;
+            option.textContent = listName;
+            listSelect.appendChild(option);
+        });
+    }
+
     // ----------------------
     // Utility Functions
     // ----------------------
     function formatDate(dateString) {
         if (!dateString) return 'N/A';
 
-        // Check if the date is already in dd/mm/yyyy format
         if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
             return dateString;
         }
 
-        // Convert from yyyy-mm-dd to dd/mm/yyyy
         try {
             const parts = dateString.split('-');
             if (parts.length === 3) {
@@ -2337,12 +2411,10 @@ document.addEventListener("DOMContentLoaded", function() {
     function convertToInputDateFormat(dateString) {
         if (!dateString || dateString === 'N/A') return '';
 
-        // If already in yyyy-mm-dd format
         if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
             return dateString;
         }
 
-        // Convert from dd/mm/yyyy to yyyy-mm-dd
         try {
             const parts = dateString.split('/');
             if (parts.length === 3) {
@@ -2363,17 +2435,14 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     function parseDateString(dateString) {
-        // Handle special cases
-        if (dateString === 'N/A') return Number.MAX_SAFE_INTEGER; // Put at the end
+        if (dateString === 'N/A') return Number.MAX_SAFE_INTEGER;
 
-        // Parse dd/mm/yyyy format
         const parts = dateString.split('/');
         if (parts.length === 3) {
             const [day, month, year] = parts;
             return new Date(year, month - 1, day).getTime();
         }
 
-        // Fallback to regular date parsing
         return new Date(dateString).getTime();
     }
 
@@ -2397,10 +2466,13 @@ document.addEventListener("DOMContentLoaded", function() {
         if (window.taskDB && window.taskDB.isReady) {
             try {
                 const dbTasks = await window.taskDB.getTasks();
+                const dbEvents = await window.taskDB.getEvents();
                 exportData.databaseTasks = dbTasks;
+                exportData.databaseEvents = dbEvents;
                 exportData.databaseTasksCount = dbTasks.length;
+                exportData.databaseEventsCount = dbEvents.length;
             } catch (error) {
-                console.error('Failed to export database tasks:', error);
+                console.error('Failed to export database data:', error);
             }
         }
 
@@ -2420,5 +2492,859 @@ document.addEventListener("DOMContentLoaded", function() {
         alert(`Data exported! Tasks: ${tasks.length}, Lists: ${lists.length}`);
     };
 
-    console.log('✅ Todo app initialization complete');
+    console.log('✅ Enhanced Todo app with calendar integration loaded successfully');
+// Todo Integration with Enhanced Database Sync
+    console.log('=== TODO WITH ENHANCED SYNC STARTING ===');
+
+// Add this to your todo.js file - enhanced functions with proper sync
+
+// ENHANCED TASK LOADING WITH PROPER SYNC
+    async function loadTasks() {
+        console.log('📂 Loading tasks with enhanced sync...');
+
+        try {
+            // Try to load from database first
+            if (window.taskDB && window.taskDB.isReady) {
+                tasks = await window.taskDB.getTasks();
+                console.log(`✅ Loaded ${tasks.length} tasks from database`);
+
+                // Migrate from localStorage if no tasks in database
+                if (tasks.length === 0) {
+                    const savedTasks = localStorage.getItem("tasks");
+                    if (savedTasks) {
+                        const localTasks = JSON.parse(savedTasks);
+                        if (localTasks.length > 0) {
+                            console.log('🔄 Migrating tasks from localStorage...');
+                            for (const task of localTasks) {
+                                try {
+                                    await window.taskDB.addTask(task);
+                                } catch (error) {
+                                    console.error('Failed to migrate task:', error);
+                                }
+                            }
+                            tasks = await window.taskDB.getTasks();
+                            console.log(`✅ Migrated ${tasks.length} tasks to database`);
+                        }
+                    }
+                }
+            } else {
+                // Fallback to localStorage
+                const savedTasks = localStorage.getItem("tasks");
+                tasks = savedTasks ? JSON.parse(savedTasks) : [];
+                console.log(`📱 Loaded ${tasks.length} tasks from localStorage (fallback)`);
+            }
+        } catch (error) {
+            console.error('❌ Failed to load tasks from database:', error);
+            // Fallback to localStorage
+            const savedTasks = localStorage.getItem("tasks");
+            tasks = savedTasks ? JSON.parse(savedTasks) : [];
+            console.log(`📱 Loaded ${tasks.length} tasks from localStorage (error fallback)`);
+        }
+
+        // Render tasks to DOM
+        renderTasks();
+    }
+
+// ENHANCED ADD TASK WITH PROPER SYNC
+    async function addTask() {
+        const taskTitle = document.getElementById("task-title");
+        const titleValue = taskTitle.value.trim();
+
+        if (!titleValue) {
+            alert('Please enter a task title');
+            return;
+        }
+
+        console.log('🔄 Adding new task with enhanced sync...');
+
+        // Get habit data if creating habit
+        const makeHabitCheckbox = document.getElementById('make-habit-checkbox');
+        const isCreatingHabit = makeHabitCheckbox && makeHabitCheckbox.checked;
+
+        let habitData = null;
+        if (isCreatingHabit) {
+            habitData = {
+                frequency: document.getElementById('habit-frequency-select')?.value || 'daily',
+                target: parseInt(document.getElementById('habit-target-input')?.value) || 1,
+                unit: document.getElementById('habit-unit-select')?.value || 'times',
+                category: document.getElementById('habit-category-select')?.value || 'health'
+            };
+        }
+
+        const newTask = {
+            title: titleValue,
+            description: document.getElementById("task-description").value.trim(),
+            date: document.getElementById("due-date").value || null,
+            reminder: document.getElementById("reminder").value || null,
+            priority: document.getElementById("priority").value !== 'priority' ?
+                document.getElementById("priority").value : 'medium',
+            list: document.getElementById("list").value !== 'default' ?
+                document.getElementById("list").value : 'N/A',
+            completed: false,
+            createdAt: new Date().toISOString(),
+            subtasks: [],
+            isHabit: isCreatingHabit
+        };
+
+        try {
+            // Save to database first
+            if (window.taskDB && window.taskDB.isReady) {
+                const savedId = await window.taskDB.addTask(newTask);
+                newTask.id = savedId;
+                console.log('✅ Task saved to database with ID:', savedId);
+                showTaskNotification('Task saved to database!', 'success');
+
+                // ENHANCED: Also create calendar event if task has a date
+                if (newTask.date) {
+                    try {
+                        await window.taskDB.createEventFromTask(newTask);
+                        console.log('✅ Calendar event created from task');
+                        showTaskNotification('Task saved and added to calendar!', 'success');
+                    } catch (eventError) {
+                        console.error('❌ Failed to create calendar event:', eventError);
+                        showTaskNotification('Task saved, but failed to add to calendar', 'warning');
+                    }
+                }
+            } else {
+                // Fallback to generate ID and save to localStorage
+                newTask.id = Date.now();
+                console.log('📱 Database not available, using localStorage fallback');
+                showTaskNotification('Task saved locally!', 'warning');
+
+                // Create calendar event in localStorage if date exists
+                if (newTask.date) {
+                    try {
+                        const calendarEvent = {
+                            id: Date.now() + 1,
+                            title: newTask.title,
+                            description: newTask.description || '',
+                            date: newTask.date,
+                            time: newTask.reminder ? new Date(newTask.reminder).toTimeString().slice(0,5) : null,
+                            list: newTask.list !== 'N/A' ? newTask.list : null,
+                            priority: newTask.priority !== 'N/A' ? newTask.priority : null,
+                            createdFromTask: true,
+                            sourceTaskId: newTask.id,
+                            createdAt: new Date().toISOString()
+                        };
+
+                        const existingEvents = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+                        existingEvents.push(calendarEvent);
+                        localStorage.setItem('calendar-events', JSON.stringify(existingEvents));
+                        console.log('✅ Calendar event created in localStorage');
+                        showTaskNotification('Task saved and added to calendar locally!', 'warning');
+                    } catch (eventError) {
+                        console.error('❌ Failed to create local calendar event:', eventError);
+                    }
+                }
+            }
+
+            // Add to local tasks array
+            tasks.push(newTask);
+            console.log(`📊 Total tasks now: ${tasks.length}`);
+
+            // Create habit if requested
+            if (isCreatingHabit && habitData) {
+                createHabitFromTaskDirect(newTask, habitData);
+                showHabitCreationSuccess();
+            }
+
+            // Update localStorage as backup
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+
+            // Re-render all tasks to show the new one
+            renderTasks();
+
+            // Clear and collapse form
+            clearTaskForm();
+            taskCreationBox.classList.remove("expanded");
+
+            console.log('✅ Task added successfully');
+
+        } catch (error) {
+            console.error('❌ Failed to save task:', error);
+
+            // Still add the task locally as fallback
+            newTask.id = Date.now();
+            tasks.push(newTask);
+
+            // Create habit if requested
+            if (isCreatingHabit && habitData) {
+                createHabitFromTaskDirect(newTask, habitData);
+                showHabitCreationSuccess();
+            }
+
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+            renderTasks();
+
+            clearTaskForm();
+            taskCreationBox.classList.remove("expanded");
+
+            showTaskNotification('Task saved locally (database error)', 'warning');
+        }
+    }
+
+// ENHANCED DELETE TASK WITH PROPER SYNC
+    async function deleteTask(taskId, taskElement) {
+        if (confirm("Are you sure you want to delete this task?")) {
+            try {
+                // Use enhanced delete that handles associated events
+                if (window.taskDB && window.taskDB.isReady) {
+                    await window.taskDB.deleteTaskAndAssociatedEvent(taskId);
+                    console.log('✅ Task and associated event deleted from database');
+                } else {
+                    // Fallback for localStorage
+                    // Check if there's an associated event
+                    const task = tasks.find(t => t.id === taskId);
+                    if (task && (task.associatedEventId || task.createdFromEvent)) {
+                        const events = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+                        const updatedEvents = events.filter(event =>
+                            event.id !== task.associatedEventId &&
+                            event.sourceTaskId !== task.id
+                        );
+                        localStorage.setItem('calendar-events', JSON.stringify(updatedEvents));
+                        console.log('✅ Associated event deleted from localStorage');
+                    }
+                }
+
+                // Remove from global array
+                tasks = tasks.filter(task => task.id !== taskId);
+
+                // Remove from DOM
+                taskElement.remove();
+
+                // Save changes to localStorage as backup
+                saveTasks();
+
+                showTaskNotification('Task deleted successfully!', 'success');
+
+            } catch (error) {
+                console.error('❌ Failed to delete task from database:', error);
+
+                // Still remove locally
+                tasks = tasks.filter(task => task.id !== taskId);
+                taskElement.remove();
+                saveTasks();
+
+                showTaskNotification('Task deleted locally (database error)', 'warning');
+            }
+        }
+    }
+
+// ENHANCED SAVE FIELD EDIT WITH PROPER SYNC
+    async function saveFieldEdit(fieldName, value, task, displayElement, prefix = '') {
+        // Get the original value
+        const originalValue = task[fieldName];
+
+        // Clean up value
+        if (typeof value === 'string') {
+            value = value.trim();
+        }
+
+        // Handle empty values
+        if (value === '' || value === null || value === undefined) {
+            if (fieldName === 'title') {
+                value = 'Untitled'; // Don't allow empty titles
+            } else {
+                value = null;
+            }
+        }
+
+        // Update task object
+        task[fieldName] = value;
+
+        // Format date fields for display
+        if ((fieldName === 'date' || fieldName === 'reminder') && value) {
+            // Format the date for display (convert from yyyy-mm-dd to dd/mm/yyyy)
+            const formattedDate = formatDate(value);
+            displayElement.textContent = prefix + formattedDate;
+        } else if (fieldName === 'priority' && value) {
+            // Update display with proper capitalization for priority
+            const capitalizedValue = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+            displayElement.textContent = prefix + (capitalizedValue || 'N/A');
+        } else {
+            displayElement.textContent = prefix + (value || 'N/A');
+        }
+
+        displayElement.style.display = "block";
+
+        // Hide the edit input
+        const editInput = displayElement.nextElementSibling;
+        if (editInput) {
+            editInput.style.display = "none";
+        }
+
+        // Update border color if priority changed
+        if (fieldName === 'priority') {
+            // Find the task element (li)
+            const taskElement = displayElement.closest('li');
+            if (taskElement) {
+                // Update border color based on new priority
+                const priorityColors = {
+                    High: '#ff5555',
+                    Medium: '#ffa500',
+                    Low: '#1e3a8a',
+                    'N/A': '#1e3a8a'
+                };
+                taskElement.style.borderLeftColor = priorityColors[value] || '#1e3a8a';
+            }
+        }
+
+        // Only save if value actually changed
+        if (originalValue !== value) {
+            // Find task in global array and update it
+            const taskIndex = tasks.findIndex(t => t.id === task.id);
+            if (taskIndex !== -1) {
+                tasks[taskIndex][fieldName] = value;
+
+                try {
+                    // Save to database if available
+                    if (window.taskDB && window.taskDB.isReady) {
+                        await window.taskDB.updateTask(tasks[taskIndex]);
+                        console.log('✅ Task updated in database');
+
+                        // If there's an associated event, update it too
+                        if (tasks[taskIndex].associatedEventId && (fieldName === 'title' || fieldName === 'description' || fieldName === 'date' || fieldName === 'priority')) {
+                            try {
+                                const events = await window.taskDB.getEvents();
+                                const associatedEvent = events.find(e => e.id === tasks[taskIndex].associatedEventId);
+                                if (associatedEvent) {
+                                    const updatedEvent = { ...associatedEvent };
+                                    if (fieldName === 'title') updatedEvent.title = value;
+                                    if (fieldName === 'description') updatedEvent.description = value;
+                                    if (fieldName === 'date') updatedEvent.date = value;
+                                    if (fieldName === 'priority') updatedEvent.priority = value;
+                                    updatedEvent.updatedAt = new Date().toISOString();
+
+                                    await window.taskDB.updateEvent(updatedEvent);
+                                    console.log('✅ Associated event updated');
+                                }
+                            } catch (eventError) {
+                                console.error('❌ Failed to update associated event:', eventError);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to update task in database:', error);
+                }
+
+                // Always save to localStorage as backup
+                saveTasks();
+            }
+
+            // If the list was changed, check if we need to reapply the current filter
+            if (fieldName === 'list') {
+                // Get the current view/filter from the page title
+                const currentView = document.querySelector(".today-title").textContent;
+
+                // If we're viewing a specific list
+                if (lists.includes(currentView)) {
+                    // If task was changed to a different list than the current view
+                    if (value !== currentView) {
+                        // Hide this task since it no longer belongs in the current list view
+                        const taskElement = displayElement.closest('li');
+                        if (taskElement) {
+                            // Add smooth transition
+                            taskElement.style.transition = "opacity 0.3s ease, height 0.3s ease, margin 0.3s ease";
+                            taskElement.style.opacity = "0";
+                            taskElement.style.height = "0";
+                            taskElement.style.margin = "0";
+                            taskElement.style.overflow = "hidden";
+
+                            // After transition completes, hide the element
+                            setTimeout(() => {
+                                taskElement.style.display = "none";
+                            }, 300);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+// ENHANCED TASK COMPLETION TOGGLE WITH PROPER SYNC
+    async function toggleTaskCompletion(task, taskRingElement, taskItemElement) {
+        // Calculate the new state (opposite of current state)
+        const newCompletedState = !task.completed;
+
+        // Add animation class
+        taskRingElement.classList.add("completing");
+
+        // Immediately update the visual state if it's being completed
+        // This ensures the checkmark appears during the animation
+        if (newCompletedState) {
+            taskRingElement.classList.add("completed");
+        } else {
+            taskRingElement.classList.remove("completed");
+        }
+
+        // Listen for animation end to finalize changes
+        taskRingElement.addEventListener("animationend", async function handler() {
+            // Remove the animation class and the event listener
+            taskRingElement.classList.remove("completing");
+            taskRingElement.removeEventListener("animationend", handler);
+
+            // Update the task's completed state in the data
+            task.completed = newCompletedState;
+
+            // Update UI
+            if (newCompletedState) {
+                // Add fading animation to the task item
+                taskItemElement.classList.add("task-item-fading");
+            } else {
+                taskItemElement.style.opacity = "1";
+                // Remove fading class if it exists
+                taskItemElement.classList.remove("task-item-fading");
+            }
+
+            // Update task in global array
+            const taskIndex = tasks.findIndex(t => t.id === task.id);
+            if (taskIndex !== -1) {
+                tasks[taskIndex].completed = task.completed;
+
+                // Save to both database and localStorage
+                try {
+                    if (window.taskDB && window.taskDB.isReady) {
+                        await window.taskDB.updateTask(tasks[taskIndex]);
+                        console.log('✅ Task completion updated in database');
+                    }
+                } catch (error) {
+                    console.error('❌ Failed to update task in database:', error);
+                }
+
+                // Always save to localStorage as backup
+                saveTasks();
+            }
+        }, { once: true });
+    }
+
+// SET UP DATABASE CHANGE LISTENERS FOR REAL-TIME SYNC
+    function setupDatabaseSync() {
+        if (window.taskDB && window.taskDB.isReady) {
+            // Listen for database changes
+            window.taskDB.addEventListener(function(change) {
+                console.log('🔄 Database change detected in todo:', change);
+
+                if (change.type === 'task') {
+                    // Reload tasks from database
+                    loadTasks().then(() => {
+                        console.log('✅ Tasks reloaded from database change');
+                    });
+                } else if (change.type === 'event' && change.action === 'added') {
+                    // If a new event was added and it should create a task, handle it
+                    const eventData = change.data;
+                    if (eventData.createdFromTask === false && eventData.hasAssociatedTask) {
+                        // This is a new event that should have a task - reload tasks
+                        loadTasks().then(() => {
+                            console.log('✅ Tasks reloaded due to new event');
+                        });
+                    }
+                }
+            });
+
+            console.log('✅ Database sync listeners set up for todo');
+        }
+    }
+
+// ENHANCED INITIALIZATION WITH SYNC
+    async function initApp() {
+        console.log('🚀 Initializing Todo App with enhanced sync...');
+
+        // Initialize database first if available
+        if (window.taskDB && !window.taskDB.isReady) {
+            try {
+                await window.taskDB.init();
+                console.log('✅ Database initialized');
+            } catch (error) {
+                console.error('❌ Database initialization failed:', error);
+            }
+        }
+
+        // Set up database sync listeners
+        setupDatabaseSync();
+
+        // Load saved data
+        await loadLists();
+        await loadTasks();
+
+        // Set up event listeners
+        setupTaskCreationEvents();
+        setupSortingEvents();
+        setupListManagementEvents();
+        setupNavigationEvents();
+
+        console.log(`📊 App initialized with ${tasks.length} tasks and ${lists.length} lists`);
+    }
+
+// ENHANCED UTILITY FUNCTIONS
+    function showTaskNotification(message, type = 'success') {
+        // Create notification
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#4caf50' : type === 'warning' ? '#ff9800' : '#f44336'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        z-index: 1000;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        max-width: 300px;
+    `;
+        notification.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : type === 'warning' ? 'exclamation-triangle' : 'times'}"></i> ${message}`;
+
+        document.body.appendChild(notification);
+
+        // Show notification
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 100);
+
+        // Hide notification after 3 seconds
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    document.body.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
+    }
+
+    function saveTasks() {
+        localStorage.setItem("tasks", JSON.stringify(tasks));
+        console.log(`💾 Saved ${tasks.length} tasks to localStorage`);
+    }
+
+// ENHANCED CALENDAR BUTTON FUNCTIONALITY
+    function createCalendarButton(task) {
+        const calendarButton = document.createElement("button");
+        calendarButton.className = "calendar-button";
+        calendarButton.innerHTML = '<i class="fas fa-calendar-plus"></i> Add to Calendar';
+        calendarButton.style.cssText = `
+        background: none;
+        border: none;
+        color: #3498db;
+        cursor: pointer;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        margin-top: 5px;
+    `;
+
+        calendarButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            addTaskToCalendar(task);
+        });
+
+        calendarButton.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#e3f2fd';
+        });
+
+        calendarButton.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = 'transparent';
+        });
+
+        return calendarButton;
+    }
+// REPLACE your existing addTaskToCalendar function with this enhanced version
+    async function addTaskToCalendar(task) {
+        if (!task.date) {
+            showTaskNotification('Task needs a date to be added to calendar', 'warning');
+            return;
+        }
+
+        try {
+            if (window.taskDB && window.taskDB.isReady) {
+                await window.taskDB.createEventFromTask(task);
+                showTaskNotification('Task added to calendar successfully!', 'success');
+            } else {
+                // Fallback: create calendar event in localStorage
+                const calendarEvent = {
+                    id: Date.now() + Math.random(),
+                    title: task.title,
+                    description: task.description || '',
+                    date: task.date,
+                    time: task.reminder ? new Date(task.reminder).toTimeString().slice(0,5) : null,
+                    list: task.list !== 'N/A' ? task.list : null,
+                    priority: task.priority !== 'N/A' ? task.priority : null,
+                    createdFromTask: true,
+                    sourceTaskId: task.id,
+                    createdAt: new Date().toISOString()
+                };
+
+                const existingEvents = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+                existingEvents.push(calendarEvent);
+                localStorage.setItem('calendar-events', JSON.stringify(existingEvents));
+
+                // 🔥 CRITICAL FIX: Update the task with the event ID
+                task.associatedEventId = calendarEvent.id;
+                const taskIndex = tasks.findIndex(t => t.id === task.id);
+                if (taskIndex !== -1) {
+                    tasks[taskIndex] = task;
+                    saveTasks(); // Save the updated task
+                }
+
+                // 🔥 CRITICAL FIX: Notify calendar page of the change
+                window.dispatchEvent(new StorageEvent('storage', {
+                    key: 'calendar-events',
+                    newValue: localStorage.getItem('calendar-events')
+                }));
+
+                showTaskNotification('Task added to calendar locally!', 'warning');
+            }
+
+            // Re-render to update the button visibility
+            renderTasks();
+        } catch (error) {
+            console.error('❌ Failed to add task to calendar:', error);
+            showTaskNotification('Failed to add task to calendar', 'error');
+        }
+    }
+
+
+// ENHANCED HABIT BUTTON FUNCTIONALITY
+    function createHabitButton(task) {
+        const habitButton = document.createElement("button");
+        habitButton.className = "habit-button";
+        habitButton.innerHTML = '<i class="fas fa-seedling"></i> Make Habit';
+        habitButton.style.cssText = `
+        background: none;
+        border: none;
+        color: #4caf50;
+        cursor: pointer;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        margin-top: 5px;
+    `;
+
+        habitButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            makeTaskHabit(task);
+        });
+
+        habitButton.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#f1f8e9';
+        });
+
+        habitButton.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = 'transparent';
+        });
+
+        return habitButton;
+    }
+
+// ENHANCED MAKE TASK HABIT FUNCTION
+    function makeTaskHabit(task) {
+        if (task.isHabit) {
+            showTaskNotification('This task is already a habit!', 'warning');
+            return;
+        }
+
+        // Check if createHabitFromTask function exists (from habits.js)
+        if (typeof window.createHabitFromTask === 'function') {
+            const success = window.createHabitFromTask(task);
+
+            if (success) {
+                task.isHabit = true;
+
+                // Update task in storage
+                const taskIndex = tasks.findIndex(t => t.id === task.id);
+                if (taskIndex !== -1) {
+                    tasks[taskIndex] = task;
+                    saveTasks();
+
+                    // Also update in database if available
+                    if (window.taskDB && window.taskDB.isReady) {
+                        window.taskDB.updateTask(task).catch(error => {
+                            console.error('Failed to update task in database:', error);
+                        });
+                    }
+                }
+
+                // Re-render tasks to show habit indicator
+                renderTasks();
+
+                showTaskNotification('Task converted to habit successfully!', 'success');
+            } else {
+                showTaskNotification('Habit already exists for this task!', 'warning');
+            }
+        } else {
+            // Fallback: just mark as habit locally
+            task.isHabit = true;
+
+            // Update task in storage
+            const taskIndex = tasks.findIndex(t => t.id === task.id);
+            if (taskIndex !== -1) {
+                tasks[taskIndex] = task;
+                saveTasks();
+
+                // Also update in database if available
+                if (window.taskDB && window.taskDB.isReady) {
+                    window.taskDB.updateTask(task).catch(error => {
+                        console.error('Failed to update task in database:', error);
+                    });
+                }
+            }
+
+            // Re-render tasks to show habit indicator
+            renderTasks();
+
+            showTaskNotification('Task marked as habit! Visit the Habits page to track it.', 'success');
+        }
+    }
+
+// AUTOMATIC SYNC CHECK ON PAGE VISIBILITY
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            // Page became visible, check for sync
+            console.log('📱 Page became visible, checking for sync...');
+            if (window.taskDB && window.taskDB.isReady) {
+                loadTasks().then(() => {
+                    console.log('✅ Tasks synced on page visibility');
+                });
+            }
+        }
+    });
+
+// PERIODIC SYNC CHECK (every 30 seconds)
+    setInterval(function() {
+        if (window.taskDB && window.taskDB.isReady && !document.hidden) {
+            window.taskDB.updateLocalStorageBackup('tasks');
+            window.taskDB.updateLocalStorageBackup('events');
+        }
+    }, 30000);
+
+// ENHANCED GLOBAL EXPORT FUNCTION
+    window.exportAllData = async function() {
+        console.log('📤 Exporting all data with enhanced sync...');
+
+        try {
+            let exportData;
+
+            if (window.taskDB && window.taskDB.isReady) {
+                // Export from database
+                exportData = await window.taskDB.exportData();
+                exportData.source = 'database';
+            } else {
+                // Fallback to localStorage
+                exportData = {
+                    tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
+                    events: JSON.parse(localStorage.getItem('calendar-events') || '[]'),
+                    lists: JSON.parse(localStorage.getItem('custom-lists') || '[]'),
+                    habits: JSON.parse(localStorage.getItem('habits') || '[]'),
+                    timestamp: new Date().toISOString(),
+                    source: 'localStorage'
+                };
+            }
+
+            console.log('Export data:', exportData);
+
+            // Download as JSON file
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+
+            const exportFileDefaultName = `todo-data-${new Date().toISOString().split('T')[0]}.json`;
+
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+
+            const totalItems = (exportData.tasks?.length || 0) + (exportData.events?.length || 0) + (exportData.habits?.length || 0);
+            showTaskNotification(`Data exported! ${totalItems} total items from ${exportData.source}`, 'success');
+
+        } catch (error) {
+            console.error('❌ Failed to export data:', error);
+            showTaskNotification('Failed to export data', 'error');
+        }
+    };
+
+// CROSS-PAGE INTEGRATION FUNCTIONS
+    window.createEventFromTask = async function(task) {
+        try {
+            if (window.taskDB && window.taskDB.isReady) {
+                return await window.taskDB.createEventFromTask(task);
+            } else {
+                // Fallback for localStorage
+                const newEvent = {
+                    id: Date.now(),
+                    title: task.title,
+                    description: task.description || '',
+                    date: task.date || new Date().toISOString().split('T')[0],
+                    time: task.reminder ? new Date(task.reminder).toTimeString().slice(0,5) : null,
+                    list: task.list !== 'N/A' ? task.list : null,
+                    priority: task.priority !== 'N/A' ? task.priority : null,
+                    createdFromTask: true,
+                    sourceTaskId: task.id,
+                    createdAt: new Date().toISOString()
+                };
+
+                const existingEvents = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+                existingEvents.push(newEvent);
+                localStorage.setItem('calendar-events', JSON.stringify(existingEvents));
+                return newEvent.id;
+            }
+        } catch (error) {
+            console.error('❌ Failed to create event from task:', error);
+            return false;
+        }
+    };
+
+    window.createTaskFromEvent = async function(event) {
+        try {
+            if (window.taskDB && window.taskDB.isReady) {
+                return await window.taskDB.createTaskFromEvent(event);
+            } else {
+                // Fallback for localStorage
+                const newTask = {
+                    id: Date.now(),
+                    title: event.title,
+                    description: event.description || '',
+                    date: event.date,
+                    reminder: event.date,
+                    priority: event.priority || 'medium',
+                    list: event.list || 'N/A',
+                    completed: false,
+                    subtasks: [],
+                    createdFromEvent: true,
+                    sourceEventId: event.id,
+                    createdAt: new Date().toISOString()
+                };
+
+                const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+                existingTasks.push(newTask);
+                localStorage.setItem('tasks', JSON.stringify(existingTasks));
+                return newTask.id;
+            }
+        } catch (error) {
+            console.error('❌ Failed to create task from event:', error);
+            return false;
+        }
+    };
+
+// LISTEN FOR STORAGE CHANGES FROM OTHER TABS
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'tasks' || e.key === 'calendar-events') {
+            console.log('🔄 Storage changed in another tab, reloading tasks...');
+            loadTasks();
+        }
+    });
+
+    console.log('✅ Enhanced Todo Integration with Database Sync loaded successfully');
+
+
 });
+

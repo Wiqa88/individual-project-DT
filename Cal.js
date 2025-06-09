@@ -380,7 +380,135 @@ function saveEventsToLocalStorage() {
     localStorage.setItem('calendar-events', JSON.stringify(events));
 }
 
-// Replace your existing saveEvent() function with this:
+
+
+// Replace your existing deleteSelectedEvent() function with this:
+// UPDATED DELETE FUNCTION FOR CAL.JS
+// Replace your existing deleteSelectedEvent function with this enhanced version:
+
+// ALSO ADD THIS ENHANCED SAVE EVENT FUNCTION FOR BETTER TASK-EVENT LINKING
+// COMPLETE CALENDAR.JS FIX - Replace your deleteSelectedEvent function with this:
+
+// REPLACE YOUR deleteSelectedEvent FUNCTION IN CAL.JS WITH THIS:
+async function deleteSelectedEvent() {
+    if (!selectedEvent) return;
+
+    if (confirm('Are you sure you want to delete this event?')) {
+        console.log(`🗑️ CALENDAR: Starting deletion of event ${selectedEvent.id}...`);
+
+        try {
+            // Use database if available
+            if (window.taskDB && window.taskDB.isReady) {
+                console.log('🔄 CALENDAR: Using database deletion...');
+                await window.taskDB.deleteEvent(selectedEvent.id);
+                console.log('✅ CALENDAR: Event and associated tasks deleted from database');
+                showCalendarNotification('Event and related tasks deleted!', 'success');
+            } else {
+                console.log('📱 CALENDAR: Database not available, using enhanced localStorage deletion...');
+
+                // ENHANCED LOCALSTORAGE DELETION
+                let localTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+                let localEvents = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+
+                // Find the event to delete
+                const eventToDelete = localEvents.find(e => e.id == selectedEvent.id);
+                if (!eventToDelete) {
+                    console.log('❌ CALENDAR: Event not found');
+                    showCalendarNotification('Event not found', 'error');
+                    return;
+                }
+
+                console.log(`CALENDAR: Found event to delete: "${eventToDelete.title}"`);
+
+                // Find associated tasks to delete
+                const tasksToDelete = localTasks.filter(task => {
+                    return (
+                        task.sourceEventId == selectedEvent.id ||
+                        task.associatedEventId == selectedEvent.id ||
+                        (task.createdFromEvent && task.sourceEventId == selectedEvent.id) ||
+                        (eventToDelete.associatedTaskId && task.id == eventToDelete.associatedTaskId)
+                    );
+                });
+
+                console.log(`CALENDAR: Found ${tasksToDelete.length} associated tasks to delete`);
+                tasksToDelete.forEach(task => {
+                    console.log(`CALENDAR: Will delete task: "${task.title}" (ID: ${task.id})`);
+                });
+
+                // Remove the event
+                localEvents = localEvents.filter(e => e.id != selectedEvent.id);
+
+                // Remove associated tasks
+                localTasks = localTasks.filter(task => {
+                    return !(
+                        task.sourceEventId == selectedEvent.id ||
+                        task.associatedEventId == selectedEvent.id ||
+                        (task.createdFromEvent && task.sourceEventId == selectedEvent.id) ||
+                        (eventToDelete.associatedTaskId && task.id == eventToDelete.associatedTaskId)
+                    );
+                });
+
+                // Save back to localStorage
+                localStorage.setItem('tasks', JSON.stringify(localTasks));
+                localStorage.setItem('calendar-events', JSON.stringify(localEvents));
+
+                // Update global events array
+                events = localEvents;
+
+                console.log(`✅ CALENDAR: Deleted 1 event and ${tasksToDelete.length} associated tasks`);
+
+                if (tasksToDelete.length > 0) {
+                    showCalendarNotification(`Event and ${tasksToDelete.length} related tasks deleted!`, 'success');
+                } else {
+                    showCalendarNotification('Event deleted (no associated tasks found)', 'success');
+                }
+
+                // Trigger storage events for real-time sync
+                window.dispatchEvent(new StorageEvent('storage', {
+                    key: 'tasks',
+                    newValue: JSON.stringify(localTasks)
+                }));
+
+                window.dispatchEvent(new StorageEvent('storage', {
+                    key: 'calendar-events',
+                    newValue: JSON.stringify(localEvents)
+                }));
+            }
+
+            // Remove from global events array (if not already done)
+            const originalLength = events.length;
+            events = events.filter(e => e.id != selectedEvent.id);
+            console.log(`📊 CALENDAR: Event array updated. Events: ${originalLength} → ${events.length}`);
+
+            // Close modals and update view
+            closeAllModals();
+            updateCalendarView();
+
+            // Fallback save to localStorage (if not already done)
+            if (window.taskDB && window.taskDB.isReady) {
+                saveEventsToLocalStorage();
+            }
+
+            console.log('✅ CALENDAR: Event deletion completed successfully');
+
+        } catch (error) {
+            console.error('❌ CALENDAR: Failed to delete event from database:', error);
+
+            // Fallback removal
+            const originalLength = events.length;
+            events = events.filter(e => e.id != selectedEvent.id);
+
+            saveEventsToLocalStorage();
+            closeAllModals();
+            updateCalendarView();
+
+            showCalendarNotification('Event deleted locally (with errors)', 'warning');
+            console.log(`📱 CALENDAR: Fallback deletion completed. Events: ${originalLength} → ${events.length}`);
+        }
+    }
+}
+
+// Also fix the saveEvent function to properly link tasks and events:
 async function saveEvent() {
     const titleInput = document.getElementById('event-title');
     const dateInput = document.getElementById('event-date');
@@ -403,6 +531,8 @@ async function saveEvent() {
         return;
     }
 
+    console.log('💾 CALENDAR: Saving new event...');
+
     // Create event
     const newEvent = {
         title: titleInput.value.trim(),
@@ -417,55 +547,116 @@ async function saveEvent() {
     };
 
     try {
+        let eventId;
+
         // Save to database
         if (window.taskDB && window.taskDB.isReady) {
-            const savedId = await window.taskDB.addEvent(newEvent);
-            newEvent.id = savedId;
-            console.log('✅ Event saved to database with ID:', savedId);
+            eventId = await window.taskDB.addEvent(newEvent);
+            newEvent.id = eventId;
+            console.log('✅ CALENDAR: Event saved to database with ID:', eventId);
             showCalendarNotification('Event saved to database!', 'success');
         } else {
             // Fallback to localStorage
-            newEvent.id = Date.now();
-            events.push(newEvent);
-            saveEventsToLocalStorage();
+            eventId = Date.now();
+            newEvent.id = eventId;
+            console.log('📱 CALENDAR: Event saved to localStorage with ID:', eventId);
             showCalendarNotification('Event saved locally!', 'warning');
         }
 
         // Add to local array for UI
         events.push(newEvent);
 
-        // Handle "Add as Task"
+        // Handle "Add as Task" with proper linking
         if (addAsTask && addAsTask.checked) {
-            const newTask = {
-                title: titleInput.value.trim(),
-                description: descriptionInput ? descriptionInput.value.trim() : '',
-                date: dateInput.value,
-                reminder: dateInput.value,
-                priority: prioritySelect && prioritySelect.value !== 'none' ? prioritySelect.value : 'medium',
-                list: listSelect && listSelect.value !== 'none' ? listSelect.value : 'N/A',
-                completed: false,
-                subtasks: [],
-                isFromCalendar: true
-            };
+            console.log('📝 CALENDAR: Creating associated task for event...');
 
-            if (window.taskDB && window.taskDB.isReady) {
-                await window.taskDB.addTask(newTask);
-                console.log('✅ Task created from event');
-            } else {
-                const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-                newTask.id = Date.now() + 1;
-                existingTasks.push(newTask);
-                localStorage.setItem('tasks', JSON.stringify(existingTasks));
+            try {
+                let taskId;
+
+                if (window.taskDB && window.taskDB.isReady) {
+                    // Create task using database
+                    const newTask = {
+                        title: titleInput.value.trim(),
+                        description: descriptionInput ? descriptionInput.value.trim() : '',
+                        date: dateInput.value,
+                        reminder: dateInput.value,
+                        priority: prioritySelect && prioritySelect.value !== 'none' ? prioritySelect.value : 'medium',
+                        list: listSelect && listSelect.value !== 'none' ? listSelect.value : 'N/A',
+                        completed: false,
+                        subtasks: [],
+                        createdFromEvent: true,
+                        sourceEventId: eventId,
+                        hasAssociatedEvent: true,
+                        associatedEventId: eventId
+                    };
+
+                    taskId = await window.taskDB.addTask(newTask);
+
+                    // Update the event to link back to the task
+                    newEvent.hasAssociatedTask = true;
+                    newEvent.associatedTaskId = taskId;
+                    await window.taskDB.updateEvent(newEvent);
+
+                    console.log(`🔗 CALENDAR: Created task ${taskId} and linked with event ${eventId}`);
+                    showCalendarNotification('Event and task created successfully!', 'success');
+                } else {
+                    // Fallback task creation with proper linking
+                    taskId = Date.now() + 1;
+                    const newTask = {
+                        id: taskId,
+                        title: titleInput.value.trim(),
+                        description: descriptionInput ? descriptionInput.value.trim() : '',
+                        date: dateInput.value,
+                        reminder: dateInput.value,
+                        priority: prioritySelect && prioritySelect.value !== 'none' ? prioritySelect.value : 'medium',
+                        list: listSelect && listSelect.value !== 'none' ? listSelect.value : 'N/A',
+                        completed: false,
+                        subtasks: [],
+                        createdFromEvent: true,
+                        sourceEventId: eventId,
+                        hasAssociatedEvent: true,
+                        associatedEventId: eventId,
+                        createdAt: new Date().toISOString()
+                    };
+
+                    const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+                    existingTasks.push(newTask);
+                    localStorage.setItem('tasks', JSON.stringify(existingTasks));
+
+                    // Update the event to link back to the task
+                    newEvent.hasAssociatedTask = true;
+                    newEvent.associatedTaskId = taskId;
+
+                    console.log(`🔗 CALENDAR: Created task ${taskId} and linked with event ${eventId}`);
+
+                    // Trigger storage event for todo page
+                    window.dispatchEvent(new StorageEvent('storage', {
+                        key: 'tasks',
+                        newValue: JSON.stringify(existingTasks)
+                    }));
+
+                    showCalendarNotification('Event and task created locally!', 'warning');
+                }
+            } catch (taskError) {
+                console.error('❌ CALENDAR: Failed to create associated task:', taskError);
+                showCalendarNotification('Event created, but failed to create associated task', 'warning');
             }
-
-            showCalendarNotification('Event created and added to your todo list!', 'success');
         }
+
+        // Save to localStorage as backup
+        saveEventsToLocalStorage();
+
+        // Trigger storage event for other pages
+        window.dispatchEvent(new StorageEvent('storage', {
+            key: 'calendar-events',
+            newValue: JSON.stringify(events)
+        }));
 
         closeAllModals();
         updateCalendarView();
 
     } catch (error) {
-        console.error('❌ Failed to save event:', error);
+        console.error('❌ CALENDAR: Failed to save event:', error);
         showCalendarNotification('Failed to save event', 'error');
 
         // Still add to local array as fallback
@@ -476,40 +667,95 @@ async function saveEvent() {
     }
 }
 
-// Replace your existing deleteSelectedEvent() function with this:
-async function deleteSelectedEvent() {
-    if (!selectedEvent) return;
 
-    if (confirm('Are you sure you want to delete this event?')) {
-        try {
-            // Remove from database
-            if (window.taskDB && window.taskDB.isReady) {
-                await window.taskDB.deleteEvent(selectedEvent.id);
-                console.log('✅ Event deleted from database:', selectedEvent.id);
-            }
+// REPLACE WITH THIS NEW CODE:
+window.addEventListener('storage', function(e) {
+    if (e.key === 'calendar-events') {
+        console.log('🔄 CALENDAR: Storage event received for calendar-events');
 
-            // Remove from local array
-            events = events.filter(e => e.id !== selectedEvent.id);
+        // Get the new events data
+        const newEventsData = e.newValue ? JSON.parse(e.newValue) : [];
+        const oldEventsCount = events.length;
+        const newEventsCount = newEventsData.length;
 
-            closeAllModals();
-            updateCalendarView();
-            showCalendarNotification('Event deleted!', 'success');
+        // Update events array directly without showing deletion messages
+        events = newEventsData;
 
-            // Fallback save to localStorage
-            saveEventsToLocalStorage();
+        // Update the view
+        updateCalendarView();
 
-        } catch (error) {
-            console.error('❌ Failed to delete event:', error);
-
-            // Still remove locally
-            events = events.filter(e => e.id !== selectedEvent.id);
-            saveEventsToLocalStorage();
-            closeAllModals();
-            updateCalendarView();
-            showCalendarNotification('Event deleted locally!', 'warning');
+        // Log the change appropriately
+        if (newEventsCount < oldEventsCount) {
+            const deletedCount = oldEventsCount - newEventsCount;
+            console.log(`✅ CALENDAR: ${deletedCount} event(s) removed via cross-page sync`);
+        } else if (newEventsCount > oldEventsCount) {
+            const addedCount = newEventsCount - oldEventsCount;
+            console.log(`✅ CALENDAR: ${addedCount} event(s) added via cross-page sync`);
+        } else {
+            console.log('✅ CALENDAR: Events synced (no count change)');
         }
     }
+
+    // Also listen for task changes to update any task-related displays
+    if (e.key === 'tasks') {
+        console.log('🔄 CALENDAR: Tasks updated in another page');
+        // You can add task-related updates here if needed
+    }
+});
+
+// ALSO ADD THIS FUNCTION TO PREVENT DUPLICATE NOTIFICATIONS:
+
+// Enhanced notification function that prevents duplicates
+let lastNotificationTime = 0;
+let lastNotificationMessage = '';
+
+function showCalendarNotification(message, type = 'success') {
+    const now = Date.now();
+
+    // Prevent duplicate notifications within 1 second
+    if (now - lastNotificationTime < 1000 && message === lastNotificationMessage) {
+        console.log('🚫 Preventing duplicate notification:', message);
+        return;
+    }
+
+    lastNotificationTime = now;
+    lastNotificationMessage = message;
+
+    console.log(`${type.toUpperCase()}: ${message}`);
+
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#ef4444'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        z-index: 1000;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+    `;
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
 }
+
+console.log('✅ CALENDAR: Enhanced delete and sync functions loaded');
 
 // Add this notification function for calendar:
 function showCalendarNotification(message, type = 'success') {
