@@ -3,6 +3,16 @@
 let tasks = [];
 let lists = [];
 
+
+// Pomodoro navigation
+const pomodoroLink = document.getElementById('pomodoro-link');
+if (pomodoroLink) {
+    pomodoroLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        window.location.href = 'Cal.html#pomodoro';
+    });
+}
+
 // Wait for DOM to be fully loaded before executing any code
 document.addEventListener("DOMContentLoaded", function() {
     // DOM Elements

@@ -1,11 +1,8 @@
-// Enhanced Eisenhower Matrix JavaScript with Full Editing
 console.log('=== EISENHOWER MATRIX STARTING ===');
 
-// Global state
 let tasks = [];
 let currentEditingTask = null;
 
-// Wait for DOM to be fully loaded
 document.addEventListener("DOMContentLoaded", function() {
     console.log('✅ DOM Content Loaded');
     initMatrix();
@@ -20,7 +17,6 @@ function initMatrix() {
 }
 
 function setupEventListeners() {
-    // Refresh tasks button
     const refreshBtn = document.getElementById('refresh-tasks');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', function(e) {
@@ -29,13 +25,11 @@ function setupEventListeners() {
         });
     }
 
-    // Modal close handlers
     const closeModalBtns = document.querySelectorAll('.close-modal');
     closeModalBtns.forEach(btn => {
         btn.addEventListener('click', closeModal);
     });
 
-    // Edit modal handlers
     const cancelEditBtn = document.getElementById('cancel-edit');
     const saveClassificationBtn = document.getElementById('save-classification');
     const editInTodoBtn = document.getElementById('edit-in-todo');

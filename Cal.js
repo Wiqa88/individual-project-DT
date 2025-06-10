@@ -27,6 +27,24 @@ let pomodoroTimer = {
     }
 };
 
+// Add this to your Cal.js file, in the DOMContentLoaded event listener
+// Check for hash on page load
+if (window.location.hash === '#pomodoro') {
+    showPomodoroPage();
+}
+
+// Listen for hash changes
+window.addEventListener('hashchange', function() {
+    if (window.location.hash === '#pomodoro') {
+        showPomodoroPage();
+    } else if (window.location.hash === '' || window.location.hash === '#calendar') {
+        showCalendarPage();
+    }
+});
+
+
+
+
 // Date formatters
 let dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 let monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
