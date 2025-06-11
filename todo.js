@@ -3345,6 +3345,8 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     };
 
+
+
 // LISTEN FOR STORAGE CHANGES FROM OTHER TABS
     window.addEventListener('storage', function(e) {
         if (e.key === 'tasks' || e.key === 'calendar-events') {

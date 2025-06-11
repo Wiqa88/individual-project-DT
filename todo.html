@@ -1,16 +1,16 @@
-<!-- Updated todo.html with proper Habits link -->
 <!DOCTYPE html>
 <html lang="en">
-
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>To-Do List</title>
+  <title>To-Do List - Task Manager Pro</title>
   <link rel="stylesheet" href="todo.css">
-  <!-- Add this line BEFORE your existing script tags -->
+  <!-- Authentication Guard - MUST be loaded first -->
+  <script src="auth-guard.js"></script>
+  <!-- Database Script -->
   <script src="db.js"></script>
 </head>
 <body>
@@ -24,6 +24,12 @@
           <li><a href="#" id="pomodoro-link"><img src="clock.png" alt="Pomodoro"></a></li>
           <li><a href="Matrix.html"><img src="matrix.png" alt="Eisenhower Matrix"></a></li>
           <li><a href="Habits.html"><img src="habits.png" alt="Habits"></a></li>
+          <!-- Settings/User Menu -->
+          <li class="settings-li">
+            <a href="#" id="userMenuToggle" title="User Menu">
+              <i class="fas fa-user-circle" style="font-size: 40px; color: #1e3a8a;"></i>
+            </a>
+          </li>
         </ul>
       </nav>
     </div>
@@ -46,6 +52,19 @@
         </div>
         <div id="lists-container">
           <!-- Lists will be dynamically added here -->
+        </div>
+      </div>
+
+      <div class="separator-line"></div>
+
+      <!-- User Info Section -->
+      <div class="user-info" style="padding: 15px 0; text-align: center; background: #f8f9fa; margin: 10px -10px; border-radius: 8px;">
+        <div class="user-avatar" style="width: 40px; height: 40px; background: #1e3a8a; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-weight: bold; font-size: 16px;">
+          <span data-user-initials>U</span>
+        </div>
+        <div class="user-details">
+          <div style="font-weight: bold; color: #1e3a8a; font-size: 14px;" data-user-name>User</div>
+          <div style="font-size: 12px; color: #6b7280;" data-user-email>user@example.com</div>
         </div>
       </div>
     </div>
@@ -144,12 +163,244 @@
   </main>
 </div>
 
-<!-- Add this button somewhere in your UI for testing -->
-<button onclick="exportAllData()" style="position: fixed; bottom: 20px; right: 20px; background: #1e3a8a; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer;">
-  📤 Export Data
-</button>
+<!-- Enhanced User Menu Modal -->
+<div id="userMenuModal" class="modal" style="display: none;">
+  <div class="modal-content" style="max-width: 400px;">
+    <div class="modal-header">
+      <h3><i class="fas fa-user-circle"></i> Account</h3>
+      <button class="close-modal" onclick="closeUserMenu()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- User Profile Info -->
+      <div style="text-align: center; padding: 20px 0; border-bottom: 1px solid #e5e7eb; margin-bottom: 20px;">
+        <div style="width: 60px; height: 60px; background: #1e3a8a; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; font-weight: bold; font-size: 24px;">
+          <span data-user-initials>U</span>
+        </div>
+        <h4 data-user-name style="color: #1e3a8a; margin-bottom: 5px;">User</h4>
+        <p data-user-email style="color: #6b7280; font-size: 14px;">user@example.com</p>
+      </div>
 
-<!-- Your existing script tags -->
+      <!-- Menu Options -->
+      <div class="menu-options">
+        <button onclick="exportUserData()" style="width: 100%; padding: 12px; text-align: left; border: none; background: none; cursor: pointer; border-radius: 6px; margin-bottom: 5px; transition: background 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+          <i class="fas fa-download" style="margin-right: 12px; color: #6b7280; width: 16px;"></i>
+          Export My Data
+        </button>
+
+        <button onclick="showChangePassword()" style="width: 100%; padding: 12px; text-align: left; border: none; background: none; cursor: pointer; border-radius: 6px; margin-bottom: 5px; transition: background 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+          <i class="fas fa-key" style="margin-right: 12px; color: #6b7280; width: 16px;"></i>
+          Change Password
+        </button>
+
+        <button onclick="showPreferences()" style="width: 100%; padding: 12px; text-align: left; border: none; background: none; cursor: pointer; border-radius: 6px; margin-bottom: 5px; transition: background 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+          <i class="fas fa-cog" style="margin-right: 12px; color: #6b7280; width: 16px;"></i>
+          Preferences
+        </button>
+
+        <button onclick="showHelp()" style="width: 100%; padding: 12px; text-align: left; border: none; background: none; cursor: pointer; border-radius: 6px; margin-bottom: 15px; transition: background 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+          <i class="fas fa-question-circle" style="margin-right: 12px; color: #6b7280; width: 16px;"></i>
+          Help & Support
+        </button>
+
+        <button onclick="confirmLogout()" style="width: 100%; padding: 12px; text-align: left; border: none; background: none; cursor: pointer; border-radius: 6px; color: #dc2626; transition: background 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='none'">
+          <i class="fas fa-sign-out-alt" style="margin-right: 12px; width: 16px;"></i>
+          Sign Out
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Export Success Modal -->
+<div id="exportModal" class="modal" style="display: none;">
+  <div class="modal-content" style="max-width: 400px; text-align: center;">
+    <div class="modal-header">
+      <h3><i class="fas fa-download"></i> Export Complete</h3>
+      <button class="close-modal" onclick="closeExportModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="color: #10b981; font-size: 48px; margin-bottom: 20px;">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <h4 style="margin-bottom: 15px; color: #1e3a8a;">Data Exported Successfully!</h4>
+      <p style="color: #6b7280; margin-bottom: 20px;">Your data has been downloaded as a JSON file. Keep this file safe as a backup of all your tasks, events, and settings.</p>
+      <button onclick="closeExportModal()" style="padding: 10px 20px; background: #1e3a8a; color: white; border: none; border-radius: 6px; cursor: pointer;">
+        Got it!
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Enhanced User Menu Functions
+  function toggleUserMenu() {
+    const modal = document.getElementById('userMenuModal');
+    modal.style.display = modal.style.display === 'none' ? 'flex' : 'none';
+  }
+
+  function closeUserMenu() {
+    document.getElementById('userMenuModal').style.display = 'none';
+  }
+
+  function exportUserData() {
+    if (window.authGuard) {
+      window.authGuard.exportData();
+      closeUserMenu();
+      // Show export success modal
+      setTimeout(() => {
+        document.getElementById('exportModal').style.display = 'flex';
+      }, 500);
+    }
+  }
+
+  function closeExportModal() {
+    document.getElementById('exportModal').style.display = 'none';
+  }
+
+  function showChangePassword() {
+    closeUserMenu();
+    const oldPassword = prompt('Enter your current password:');
+    if (!oldPassword) return;
+
+    const newPassword = prompt('Enter your new password:');
+    if (!newPassword) return;
+
+    const confirmPassword = prompt('Confirm your new password:');
+    if (newPassword !== confirmPassword) {
+      alert('Passwords do not match!');
+      return;
+    }
+
+    // Change password logic would go here
+    alert('Password change functionality will be implemented with backend integration.');
+  }
+
+  function showPreferences() {
+    closeUserMenu();
+    alert('Preferences panel coming soon! You can customize themes, notifications, and more.');
+  }
+
+  function showHelp() {
+    closeUserMenu();
+    const helpText = `Task Manager Pro Help
+
+🔹 Creating Tasks: Click "Add Task" or use the task creation box
+🔹 Organizing: Use lists and priorities to organize your tasks
+🔹 Calendar: View and schedule tasks in calendar view
+🔹 Habits: Convert tasks into trackable habits
+🔹 Matrix: Use Eisenhower Matrix for prioritization
+🔹 Pomodoro: Use the built-in timer for focused work
+
+Keyboard Shortcuts:
+• Ctrl + N: New task
+• Ctrl + S: Save
+• Ctrl + E: Export data
+
+Need more help? Contact support@taskmanager.pro`;
+
+    alert(helpText);
+  }
+
+  function confirmLogout() {
+    closeUserMenu();
+    if (window.authGuard) {
+      window.authGuard.logout();
+    }
+  }
+
+  // Set up user menu toggle
+  document.addEventListener('DOMContentLoaded', () => {
+    const userMenuToggle = document.getElementById('userMenuToggle');
+    if (userMenuToggle) {
+      userMenuToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleUserMenu();
+      });
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('userMenuModal').addEventListener('click', (e) => {
+      if (e.target.id === 'userMenuModal') {
+        closeUserMenu();
+      }
+    });
+
+    // Close export modal when clicking outside
+    document.getElementById('exportModal').addEventListener('click', (e) => {
+      if (e.target.id === 'exportModal') {
+        closeExportModal();
+      }
+    });
+
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+          case 'n':
+            e.preventDefault();
+            document.getElementById('task-title').focus();
+            break;
+          case 'e':
+            e.preventDefault();
+            if (window.authGuard) {
+              window.authGuard.exportData();
+            }
+            break;
+          case 'l':
+            e.preventDefault();
+            toggleUserMenu();
+            break;
+        }
+      }
+
+      // Escape to close modals
+      if (e.key === 'Escape') {
+        closeUserMenu();
+        closeExportModal();
+      }
+    });
+  });
+
+  // Welcome message for authenticated users
+  window.addEventListener('load', () => {
+    // Show welcome message after a short delay
+    setTimeout(() => {
+      if (window.authGuard && window.authGuard.getCurrentUser()) {
+        const user = window.authGuard.getCurrentUser();
+        const now = new Date();
+        const hour = now.getHours();
+
+        let greeting;
+        if (hour < 12) greeting = 'Good morning';
+        else if (hour < 17) greeting = 'Good afternoon';
+        else greeting = 'Good evening';
+
+        // Show a personalized welcome
+        if (window.authGuard.showNotification) {
+          window.authGuard.showNotification(`${greeting}, ${user.name}! Ready to be productive?`, 'success');
+        }
+      }
+    }, 1500);
+  });
+
+  // Enhanced task creation with user context
+  if (window.addTask) {
+    const originalAddTask = window.addTask;
+    window.addTask = function() {
+      // Add user context to tasks
+      const result = originalAddTask.apply(this, arguments);
+
+      // Log activity
+      if (window.authGuard && window.authGuard.getCurrentUser()) {
+        console.log(`Task created by ${window.authGuard.getCurrentUser().name}`);
+      }
+
+      return result;
+    };
+  }
+</script>
+
+<!-- Your existing todo.js script -->
 <script src="todo.js"></script>
 
 </body>

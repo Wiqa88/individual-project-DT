@@ -1,60 +1,1298 @@
 <!DOCTYPE html>
 <html lang="en">
-
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>To-Do List - Login</title>
-  <link rel="stylesheet" href="styles.css"> <!-- Linking the css sfile -->
-  <!-- Add this line BEFORE your existing script tags -->
-  <script src="db.js"></script>
+  <title>Task Manager - Welcome</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Enhanced Authentication Styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .auth-container {
+      display: flex;
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+      max-width: 900px;
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .auth-section {
+      flex: 1;
+      padding: 60px 50px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 600px;
+    }
+
+    .welcome-section {
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .welcome-section::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="white" opacity="0.1"/></svg>') repeat;
+      animation: float 20s linear infinite;
+    }
+
+    @keyframes float {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    .welcome-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 48px;
+      margin-bottom: 20px;
+      color: #fbbf24;
+    }
+
+    .welcome-title {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .welcome-subtitle {
+      font-size: 18px;
+      opacity: 0.9;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+
+    .features-list {
+      text-align: left;
+      margin: 30px 0;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+      font-size: 16px;
+    }
+
+    .feature-item i {
+      margin-right: 12px;
+      color: #fbbf24;
+      width: 20px;
+    }
+
+    .auth-form {
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .form-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .form-header h2 {
+      color: #1e3a8a;
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+
+    .form-header p {
+      color: #666;
+      font-size: 16px;
+    }
+
+    .form-tabs {
+      display: flex;
+      margin-bottom: 30px;
+      background: #f1f5f9;
+      border-radius: 10px;
+      padding: 4px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      background: transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      color: #64748b;
+      transition: all 0.3s ease;
+    }
+
+    .tab-btn.active {
+      background: white;
+      color: #1e3a8a;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-content {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .form-panel {
+      display: none;
+      animation: slideIn 0.3s ease;
+    }
+
+    .form-panel.active {
+      display: block;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    .input-wrapper i {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #9ca3af;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 15px 15px 15px 45px;
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      background: white;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #1e3a8a;
+      box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+    }
+
+    .form-input.error {
+      border-color: #ef4444;
+    }
+
+    .error-message {
+      color: #ef4444;
+      font-size: 14px;
+      margin-top: 5px;
+      display: none;
+    }
+
+    .password-strength {
+      margin-top: 8px;
+      display: none;
+    }
+
+    .strength-bar {
+      height: 4px;
+      background: #e5e7eb;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 5px;
+    }
+
+    .strength-fill {
+      height: 100%;
+      transition: all 0.3s ease;
+      border-radius: 2px;
+    }
+
+    .strength-text {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 25px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      margin-right: 10px;
+      margin-top: 2px;
+    }
+
+    .checkbox-group label {
+      font-size: 14px;
+      color: #4b5563;
+      line-height: 1.4;
+    }
+
+    .checkbox-group a {
+      color: #1e3a8a;
+      text-decoration: none;
+    }
+
+    .checkbox-group a:hover {
+      text-decoration: underline;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(30, 58, 138, 0.3);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .submit-btn .spinner {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: 2px solid transparent;
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .social-login {
+      margin-top: 30px;
+      text-align: center;
+    }
+
+    .social-divider {
+      display: flex;
+      align-items: center;
+      margin: 20px 0;
+      color: #9ca3af;
+    }
+
+    .social-divider::before,
+    .social-divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: #e5e7eb;
+    }
+
+    .social-divider span {
+      padding: 0 15px;
+      font-size: 14px;
+    }
+
+    .social-buttons {
+      display: flex;
+      gap: 15px;
+    }
+
+    .social-btn {
+      flex: 1;
+      padding: 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+
+    .social-btn:hover {
+      border-color: #d1d5db;
+      transform: translateY(-1px);
+    }
+
+    .google-btn:hover {
+      border-color: #ea4335;
+      color: #ea4335;
+    }
+
+    .microsoft-btn:hover {
+      border-color: #0078d4;
+      color: #0078d4;
+    }
+
+    .forgot-password {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .forgot-password a {
+      color: #1e3a8a;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .forgot-password a:hover {
+      text-decoration: underline;
+    }
+
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 10px;
+      color: white;
+      font-weight: 600;
+      z-index: 1000;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+      max-width: 350px;
+    }
+
+    .notification.show {
+      transform: translateX(0);
+    }
+
+    .notification.success {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    .notification.error {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    }
+
+    .notification.warning {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .auth-container {
+        flex-direction: column;
+        max-width: 400px;
+        margin: 20px;
+      }
+
+      .welcome-section {
+        order: -1;
+        padding: 40px 30px;
+        min-height: auto;
+      }
+
+      .auth-section {
+        padding: 40px 30px;
+        min-height: auto;
+      }
+
+      .welcome-title {
+        font-size: 24px;
+      }
+
+      .welcome-subtitle {
+        font-size: 16px;
+      }
+
+      .social-buttons {
+        flex-direction: column;
+      }
+    }
+
+    /* Loading animation */
+    .auth-container.loading {
+      pointer-events: none;
+    }
+
+    .auth-container.loading::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+
+    /* Success state */
+    .success-message {
+      text-align: center;
+      padding: 40px;
+      display: none;
+    }
+
+    .success-message.show {
+      display: block;
+      animation: slideIn 0.5s ease;
+    }
+
+    .success-icon {
+      font-size: 64px;
+      color: #10b981;
+      margin-bottom: 20px;
+    }
+
+    .success-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: #1e3a8a;
+      margin-bottom: 10px;
+    }
+
+    .success-text {
+      color: #6b7280;
+      font-size: 16px;
+      margin-bottom: 30px;
+    }
+
+    .continue-btn {
+      padding: 12px 30px;
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .continue-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(30, 58, 138, 0.3);
+    }
+  </style>
 </head>
 <body>
-
-<div class="auth-container">
-  <!-- Login Box -->
-  <div class="login-section">
-    <h2>Login to you account</h2>
-    <form action="#" method="POST">
-      <div claxass="input-group">
-        <label for="email"> Email</label>
-        <input type="email" id="email" name="email" placeholder="Enter your email" required>
-      </div>
-
-      <div class="input-group">
-        <label for="password"> Password</label>
-        <input type="password" id="password" name="password" placeholder="Enter your password" required>
-      </div>
-
-      <button type="submit" class="login-btn"> Login</button>
-
-      <p><a href="#">Forgot Password?</a></p>
-
-      <!-- Social Login Buttons -->
-      <div class="social-login">
-        <button class="google-btn">
-          <img src="Glogo.png" alt="Google">
-        </button>
-        <button class="facebook-btn">
-          <img src="FLogin.png" alt="Facebook">
-        </button>
-        <button class="apple-btn">
-          <img src="Alogo.png" alt="Apple">
-        </button>
-      </div>
-    </form>
-  </div>
-
+<div class="auth-container" id="authContainer">
   <!-- Welcome Section -->
   <div class="welcome-section">
-    <h2> Welcome to WS To-Do List!</h2>
-    <p class="welcome-text">
-      Organize your tasks efficiently and stay productive with our simple and easy-to-use To-Do List. Start managing your tasks today!
-    </p>
-    <p>Don't have an account? <a href="#">Sign up here</a></p>
+    <div class="welcome-content">
+      <div class="logo">
+        <i class="fas fa-tasks"></i>
+      </div>
+      <h1 class="welcome-title">Task Manager Pro</h1>
+      <p class="welcome-subtitle">
+        The complete productivity solution for managing your tasks, habits, and time.
+      </p>
+
+      <div class="features-list">
+        <div class="feature-item">
+          <i class="fas fa-check"></i>
+          <span>Smart task organization</span>
+        </div>
+        <div class="feature-item">
+          <i class="fas fa-calendar"></i>
+          <span>Integrated calendar & scheduling</span>
+        </div>
+        <div class="feature-item">
+          <i class="fas fa-clock"></i>
+          <span>Pomodoro timer</span>
+        </div>
+        <div class="feature-item">
+          <i class="fas fa-chart-line"></i>
+          <span>Habit tracking</span>
+        </div>
+        <div class="feature-item">
+          <i class="fas fa-th-large"></i>
+          <span>Eisenhower Matrix</span>
+        </div>
+        <div class="feature-item">
+          <i class="fas fa-sync"></i>
+          <span>Cross-device sync</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth Section -->
+  <div class="auth-section">
+    <div class="auth-form">
+      <div class="form-header">
+        <h2 id="formTitle">Welcome Back</h2>
+        <p id="formSubtitle">Sign in to continue your productivity journey</p>
+      </div>
+
+      <div class="form-tabs">
+        <button class="tab-btn active" id="loginTab">Sign In</button>
+        <button class="tab-btn" id="signupTab">Sign Up</button>
+      </div>
+
+      <div class="form-content">
+        <!-- Login Form -->
+        <div class="form-panel active" id="loginPanel">
+          <form id="loginForm">
+            <div class="input-group">
+              <label for="loginEmail">Email Address</label>
+              <div class="input-wrapper">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="loginEmail" class="form-input" placeholder="Enter your email" required>
+              </div>
+              <div class="error-message" id="loginEmailError"></div>
+            </div>
+
+            <div class="input-group">
+              <label for="loginPassword">Password</label>
+              <div class="input-wrapper">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="loginPassword" class="form-input" placeholder="Enter your password" required>
+              </div>
+              <div class="error-message" id="loginPasswordError"></div>
+            </div>
+
+            <div class="checkbox-group">
+              <input type="checkbox" id="rememberMe">
+              <label for="rememberMe">Keep me signed in</label>
+            </div>
+
+            <button type="submit" class="submit-btn" id="loginBtn">
+              <span class="btn-text">Sign In</span>
+              <div class="spinner"></div>
+            </button>
+          </form>
+
+          <div class="forgot-password">
+            <a href="#" id="forgotPasswordLink">Forgot your password?</a>
+          </div>
+        </div>
+
+        <!-- Signup Form -->
+        <div class="form-panel" id="signupPanel">
+          <form id="signupForm">
+            <div class="input-group">
+              <label for="signupName">Full Name</label>
+              <div class="input-wrapper">
+                <i class="fas fa-user"></i>
+                <input type="text" id="signupName" class="form-input" placeholder="Enter your full name" required>
+              </div>
+              <div class="error-message" id="signupNameError"></div>
+            </div>
+
+            <div class="input-group">
+              <label for="signupEmail">Email Address</label>
+              <div class="input-wrapper">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="signupEmail" class="form-input" placeholder="Enter your email" required>
+              </div>
+              <div class="error-message" id="signupEmailError"></div>
+            </div>
+
+            <div class="input-group">
+              <label for="signupPassword">Password</label>
+              <div class="input-wrapper">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="signupPassword" class="form-input" placeholder="Create a password" required>
+              </div>
+              <div class="password-strength" id="passwordStrength">
+                <div class="strength-bar">
+                  <div class="strength-fill" id="strengthFill"></div>
+                </div>
+                <div class="strength-text" id="strengthText">Password strength</div>
+              </div>
+              <div class="error-message" id="signupPasswordError"></div>
+            </div>
+
+            <div class="input-group">
+              <label for="confirmPassword">Confirm Password</label>
+              <div class="input-wrapper">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="confirmPassword" class="form-input" placeholder="Confirm your password" required>
+              </div>
+              <div class="error-message" id="confirmPasswordError"></div>
+            </div>
+
+            <div class="checkbox-group">
+              <input type="checkbox" id="agreeTerms" required>
+              <label for="agreeTerms">
+                I agree to the <a href="#" id="termsLink">Terms of Service</a> and
+                <a href="#" id="privacyLink">Privacy Policy</a>
+              </label>
+            </div>
+
+            <button type="submit" class="submit-btn" id="signupBtn">
+              <span class="btn-text">Create Account</span>
+              <div class="spinner"></div>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="social-login">
+        <div class="social-divider">
+          <span>or continue with</span>
+        </div>
+        <div class="social-buttons">
+          <button class="social-btn google-btn" id="googleBtn">
+            <i class="fab fa-google"></i>
+            <span>Google</span>
+          </button>
+          <button class="social-btn microsoft-btn" id="microsoftBtn">
+            <i class="fab fa-microsoft"></i>
+            <span>Microsoft</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Message -->
+    <div class="success-message" id="successMessage">
+      <div class="success-icon">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <h3 class="success-title">Welcome to Task Manager Pro!</h3>
+      <p class="success-text">Your account has been created successfully. Let's get you started on your productivity journey.</p>
+      <button class="continue-btn" id="continueBtn">Continue to Dashboard</button>
+    </div>
   </div>
 </div>
 
+<script>
+  // Enhanced Authentication System
+  class AuthSystem {
+    constructor() {
+      this.users = JSON.parse(localStorage.getItem('users') || '[]');
+      this.currentUser = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+      this.init();
+    }
+
+    init() {
+      this.setupEventListeners();
+      this.checkAuthState();
+    }
+
+    setupEventListeners() {
+      // Tab switching
+      document.getElementById('loginTab').addEventListener('click', () => this.switchTab('login'));
+      document.getElementById('signupTab').addEventListener('click', () => this.switchTab('signup'));
+
+      // Form submissions
+      document.getElementById('loginForm').addEventListener('submit', (e) => this.handleLogin(e));
+      document.getElementById('signupForm').addEventListener('submit', (e) => this.handleSignup(e));
+
+      // Password strength checker
+      document.getElementById('signupPassword').addEventListener('input', (e) => this.checkPasswordStrength(e.target.value));
+
+      // Password confirmation
+      document.getElementById('confirmPassword').addEventListener('blur', () => this.validatePasswordMatch());
+
+      // Email validation
+      document.getElementById('signupEmail').addEventListener('blur', () => this.validateEmail('signup'));
+      document.getElementById('loginEmail').addEventListener('blur', () => this.validateEmail('login'));
+
+      // Social login
+      document.getElementById('googleBtn').addEventListener('click', () => this.socialLogin('google'));
+      document.getElementById('microsoftBtn').addEventListener('click', () => this.socialLogin('microsoft'));
+
+      // Continue button
+      document.getElementById('continueBtn').addEventListener('click', () => this.redirectToDashboard());
+
+      // Forgot password
+      document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
+        e.preventDefault();
+        this.handleForgotPassword();
+      });
+
+      // Terms and privacy links
+      document.getElementById('termsLink').addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showModal('Terms of Service', 'By using Task Manager Pro, you agree to our terms...');
+      });
+
+      document.getElementById('privacyLink').addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showModal('Privacy Policy', 'We respect your privacy and protect your data...');
+      });
+    }
+
+    switchTab(tab) {
+      const loginTab = document.getElementById('loginTab');
+      const signupTab = document.getElementById('signupTab');
+      const loginPanel = document.getElementById('loginPanel');
+      const signupPanel = document.getElementById('signupPanel');
+      const formTitle = document.getElementById('formTitle');
+      const formSubtitle = document.getElementById('formSubtitle');
+
+      if (tab === 'login') {
+        loginTab.classList.add('active');
+        signupTab.classList.remove('active');
+        loginPanel.classList.add('active');
+        signupPanel.classList.remove('active');
+        formTitle.textContent = 'Welcome Back';
+        formSubtitle.textContent = 'Sign in to continue your productivity journey';
+      } else {
+        signupTab.classList.add('active');
+        loginTab.classList.remove('active');
+        signupPanel.classList.add('active');
+        loginPanel.classList.remove('active');
+        formTitle.textContent = 'Create Account';
+        formSubtitle.textContent = 'Join thousands of productive users';
+      }
+
+      this.clearErrors();
+    }
+
+    async handleLogin(e) {
+      e.preventDefault();
+      this.clearErrors();
+
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const rememberMe = document.getElementById('rememberMe').checked;
+
+      // Validation
+      if (!this.validateEmail('login') || !password) {
+        this.showError('loginPasswordError', 'Please enter your password');
+        return;
+      }
+
+      this.setLoading('loginBtn', true);
+
+      // Simulate API call
+      await this.delay(1500);
+
+      // Find user
+      const user = this.users.find(u => u.email === email && u.password === password);
+
+      if (!user) {
+        this.setLoading('loginBtn', false);
+        this.showError('loginEmailError', 'Invalid email or password');
+        this.showNotification('Invalid credentials. Please try again.', 'error');
+        return;
+      }
+
+      // Success
+      this.currentUser = { ...user };
+      delete this.currentUser.password; // Don't store password in session
+
+      if (rememberMe) {
+        localStorage.setItem('rememberedUser', email);
+      } else {
+        localStorage.removeItem('rememberedUser');
+      }
+
+      sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+
+      this.setLoading('loginBtn', false);
+      this.showNotification(`Welcome back, ${user.name}!`, 'success');
+
+      await this.delay(1000);
+      this.redirectToDashboard();
+    }
+
+    async handleSignup(e) {
+      e.preventDefault();
+      this.clearErrors();
+
+      const name = document.getElementById('signupName').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const password = document.getElementById('signupPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      const agreeTerms = document.getElementById('agreeTerms').checked;
+
+      // Validation
+      let hasErrors = false;
+
+      if (!name || name.length < 2) {
+        this.showError('signupNameError', 'Name must be at least 2 characters');
+        hasErrors = true;
+      }
+
+      if (!this.validateEmail('signup')) {
+        hasErrors = true;
+      }
+
+      if (!this.isPasswordStrong(password)) {
+        this.showError('signupPasswordError', 'Password must be at least 8 characters with uppercase, lowercase, number and special character');
+        hasErrors = true;
+      }
+
+      if (password !== confirmPassword) {
+        this.showError('confirmPasswordError', 'Passwords do not match');
+        hasErrors = true;
+      }
+
+      if (!agreeTerms) {
+        this.showNotification('Please agree to the Terms of Service and Privacy Policy', 'error');
+        hasErrors = true;
+      }
+
+      if (hasErrors) return;
+
+      // Check if user already exists
+      if (this.users.find(u => u.email === email)) {
+        this.showError('signupEmailError', 'An account with this email already exists');
+        this.showNotification('Email already registered. Try signing in instead.', 'error');
+        return;
+      }
+
+      this.setLoading('signupBtn', true);
+
+      // Simulate API call
+      await this.delay(2000);
+
+      // Create user
+      const newUser = {
+        id: Date.now(),
+        name,
+        email,
+        password,
+        createdAt: new Date().toISOString(),
+        preferences: {
+          theme: 'light',
+          notifications: true,
+          language: 'en'
+        }
+      };
+
+      this.users.push(newUser);
+      localStorage.setItem('users', JSON.stringify(this.users));
+
+      this.currentUser = { ...newUser };
+      delete this.currentUser.password;
+      sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+
+      this.setLoading('signupBtn', false);
+
+      // Show success state
+      this.showSuccess();
+    }
+
+    validateEmail(type) {
+      const emailInput = document.getElementById(`${type}Email`);
+      const errorElement = document.getElementById(`${type}EmailError`);
+      const email = emailInput.value.trim();
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!email) {
+        this.showError(`${type}EmailError`, 'Email is required');
+        return false;
+      }
+
+      if (!emailRegex.test(email)) {
+        this.showError(`${type}EmailError`, 'Please enter a valid email address');
+        return false;
+      }
+
+      this.clearError(`${type}EmailError`);
+      return true;
+    }
+
+    checkPasswordStrength(password) {
+      const strengthElement = document.getElementById('passwordStrength');
+      const fillElement = document.getElementById('strengthFill');
+      const textElement = document.getElementById('strengthText');
+
+      if (!password) {
+        strengthElement.style.display = 'none';
+        return;
+      }
+
+      strengthElement.style.display = 'block';
+
+      let score = 0;
+      let feedback = [];
+
+      // Length check
+      if (password.length >= 8) score += 1;
+      else feedback.push('at least 8 characters');
+
+      // Uppercase check
+      if (/[A-Z]/.test(password)) score += 1;
+      else feedback.push('uppercase letter');
+
+      // Lowercase check
+      if (/[a-z]/.test(password)) score += 1;
+      else feedback.push('lowercase letter');
+
+      // Number check
+      if (/\d/.test(password)) score += 1;
+      else feedback.push('number');
+
+      // Special character check
+      if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score += 1;
+      else feedback.push('special character');
+
+      const strength = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'][score];
+      const colors = ['#ef4444', '#f59e0b', '#eab308', '#10b981', '#059669'];
+      const widths = ['20%', '40%', '60%', '80%', '100%'];
+
+      fillElement.style.backgroundColor = colors[score];
+      fillElement.style.width = widths[score];
+      textElement.textContent = strength;
+      textElement.style.color = colors[score];
+
+      return score >= 4;
+    }
+
+    isPasswordStrong(password) {
+      return password.length >= 8 &&
+              /[A-Z]/.test(password) &&
+              /[a-z]/.test(password) &&
+              /\d/.test(password) &&
+              /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    }
+
+    validatePasswordMatch() {
+      const password = document.getElementById('signupPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (confirmPassword && password !== confirmPassword) {
+        this.showError('confirmPasswordError', 'Passwords do not match');
+        return false;
+      }
+
+      this.clearError('confirmPasswordError');
+      return true;
+    }
+
+    async socialLogin(provider) {
+      this.showNotification(`${provider.charAt(0).toUpperCase() + provider.slice(1)} login coming soon!`, 'warning');
+
+      // Simulate social login
+      if (provider === 'google') {
+        // For demo purposes, create a demo Google user
+        const demoUser = {
+          id: Date.now(),
+          name: 'Demo User',
+          email: 'demo@gmail.com',
+          provider: 'google',
+          createdAt: new Date().toISOString(),
+          preferences: {
+            theme: 'light',
+            notifications: true,
+            language: 'en'
+          }
+        };
+
+        this.currentUser = demoUser;
+        sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+
+        this.showNotification('Google login successful!', 'success');
+        await this.delay(1000);
+        this.redirectToDashboard();
+      }
+    }
+
+    handleForgotPassword() {
+      const email = prompt('Please enter your email address:');
+      if (email) {
+        if (this.users.find(u => u.email === email)) {
+          this.showNotification('Password reset link sent to your email!', 'success');
+        } else {
+          this.showNotification('No account found with this email address.', 'error');
+        }
+      }
+    }
+
+    showSuccess() {
+      const authForm = document.querySelector('.auth-form');
+      const successMessage = document.getElementById('successMessage');
+
+      authForm.style.display = 'none';
+      successMessage.classList.add('show');
+    }
+
+    showError(elementId, message) {
+      const errorElement = document.getElementById(elementId);
+      const inputElement = errorElement.previousElementSibling.querySelector('input');
+
+      errorElement.textContent = message;
+      errorElement.style.display = 'block';
+      inputElement.classList.add('error');
+    }
+
+    clearError(elementId) {
+      const errorElement = document.getElementById(elementId);
+      const inputElement = errorElement.previousElementSibling.querySelector('input');
+
+      errorElement.style.display = 'none';
+      inputElement.classList.remove('error');
+    }
+
+    clearErrors() {
+      const errorElements = document.querySelectorAll('.error-message');
+      const inputElements = document.querySelectorAll('.form-input');
+
+      errorElements.forEach(el => el.style.display = 'none');
+      inputElements.forEach(el => el.classList.remove('error'));
+    }
+
+    setLoading(buttonId, loading) {
+      const button = document.getElementById(buttonId);
+      const spinner = button.querySelector('.spinner');
+      const text = button.querySelector('.btn-text');
+
+      if (loading) {
+        button.disabled = true;
+        spinner.style.display = 'block';
+        text.style.display = 'none';
+      } else {
+        button.disabled = false;
+        spinner.style.display = 'none';
+        text.style.display = 'block';
+      }
+    }
+
+    showNotification(message, type = 'success') {
+      // Remove existing notifications
+      const existingNotifications = document.querySelectorAll('.notification');
+      existingNotifications.forEach(n => n.remove());
+
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.innerHTML = `
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i>
+                    <span>${message}</span>
+                `;
+
+      document.body.appendChild(notification);
+
+      // Show notification
+      setTimeout(() => notification.classList.add('show'), 100);
+
+      // Hide notification after 4 seconds
+      setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+      }, 4000);
+    }
+
+    showModal(title, content) {
+      alert(`${title}\n\n${content}`);
+    }
+
+    checkAuthState() {
+      // Auto-fill remembered email
+      const rememberedUser = localStorage.getItem('rememberedUser');
+      if (rememberedUser) {
+        document.getElementById('loginEmail').value = rememberedUser;
+      }
+
+      // Check if user is already logged in
+      if (this.currentUser) {
+        this.showNotification(`Welcome back, ${this.currentUser.name}!`, 'success');
+        setTimeout(() => this.redirectToDashboard(), 2000);
+      }
+    }
+
+    redirectToDashboard() {
+      // Store user session
+      sessionStorage.setItem('isAuthenticated', 'true');
+      sessionStorage.setItem('loginTime', new Date().toISOString());
+
+      // Redirect to todo.html (main dashboard)
+      window.location.href = 'todo.html';
+    }
+
+    delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // User management methods
+    getCurrentUser() {
+      return this.currentUser;
+    }
+
+    logout() {
+      sessionStorage.removeItem('currentUser');
+      sessionStorage.removeItem('isAuthenticated');
+      sessionStorage.removeItem('loginTime');
+      this.currentUser = null;
+      window.location.href = 'index.html';
+    }
+
+    updateUserProfile(updates) {
+      if (!this.currentUser) return false;
+
+      // Update in users array
+      const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
+      if (userIndex !== -1) {
+        this.users[userIndex] = { ...this.users[userIndex], ...updates };
+        localStorage.setItem('users', JSON.stringify(this.users));
+
+        // Update current user session
+        this.currentUser = { ...this.currentUser, ...updates };
+        sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+
+        return true;
+      }
+      return false;
+    }
+
+    changePassword(oldPassword, newPassword) {
+      if (!this.currentUser) return false;
+
+      const user = this.users.find(u => u.id === this.currentUser.id);
+      if (user && user.password === oldPassword) {
+        user.password = newPassword;
+        localStorage.setItem('users', JSON.stringify(this.users));
+        return true;
+      }
+      return false;
+    }
+
+    deleteAccount() {
+      if (!this.currentUser) return false;
+
+      if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+        // Remove user from users array
+        this.users = this.users.filter(u => u.id !== this.currentUser.id);
+        localStorage.setItem('users', JSON.stringify(this.users));
+
+        // Clear all user data
+        sessionStorage.clear();
+        localStorage.removeItem('rememberedUser');
+
+        // Optionally clear user's app data
+        localStorage.removeItem('tasks');
+        localStorage.removeItem('calendar-events');
+        localStorage.removeItem('habits');
+        localStorage.removeItem('custom-lists');
+
+        this.showNotification('Account deleted successfully', 'success');
+        setTimeout(() => window.location.href = 'index.html', 2000);
+        return true;
+      }
+      return false;
+    }
+
+    // Export user data
+    exportUserData() {
+      if (!this.currentUser) return null;
+
+      const userData = {
+        profile: this.currentUser,
+        tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
+        events: JSON.parse(localStorage.getItem('calendar-events') || '[]'),
+        habits: JSON.parse(localStorage.getItem('habits') || '[]'),
+        lists: JSON.parse(localStorage.getItem('custom-lists') || '[]'),
+        exportDate: new Date().toISOString()
+      };
+
+      const dataStr = JSON.stringify(userData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `task-manager-data-${this.currentUser.name}-${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      this.showNotification('Data exported successfully!', 'success');
+    }
+  }
+
+  // Initialize authentication system
+  const auth = new AuthSystem();
+
+  // Make auth system globally available for other pages
+  window.authSystem = auth;
+
+  // Add some demo users for testing
+  if (!localStorage.getItem('users')) {
+    const demoUsers = [
+      {
+        id: 1,
+        name: 'John Demo',
+        email: 'demo@example.com',
+        password: 'Demo123!',
+        createdAt: new Date().toISOString(),
+        preferences: {
+          theme: 'light',
+          notifications: true,
+          language: 'en'
+        }
+      }
+    ];
+    localStorage.setItem('users', JSON.stringify(demoUsers));
+  }
+
+  // Add keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      const activeTab = document.querySelector('.tab-btn.active').id;
+      if (activeTab === 'loginTab') {
+        document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+      } else {
+        document.getElementById('signupForm').dispatchEvent(new Event('submit'));
+      }
+    }
+  });
+
+  // Add input validation on typing
+  document.addEventListener('input', (e) => {
+    if (e.target.classList.contains('form-input')) {
+      e.target.classList.remove('error');
+      const errorElement = e.target.closest('.input-group').querySelector('.error-message');
+      if (errorElement) {
+        errorElement.style.display = 'none';
+      }
+    }
+  });
+
+  console.log('🔐 Enhanced Authentication System Loaded');
+  console.log('📧 Demo Account: demo@example.com / Demo123!');
+</script>
 </body>
 </html>
