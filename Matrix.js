@@ -3,6 +3,10 @@ console.log('=== EISENHOWER MATRIX STARTING ===');
 let tasks = [];
 let currentEditingTask = null;
 
+
+
+
+
 document.addEventListener("DOMContentLoaded", function() {
     console.log('✅ DOM Content Loaded');
     initMatrix();
