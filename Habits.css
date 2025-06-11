@@ -226,21 +226,6 @@
     background-color: #9c27b0;
 }
 
-/* Settings icon */
-.settings-li {
-    margin-top: auto !important;
-    margin-bottom: 30px !important;
-}
-
-.sidebar-main nav ul li a i.fa-cog {
-    font-size: 40px;
-    color: #333;
-    transition: transform 0.3s ease, color 0.3s ease;
-}
-
-.sidebar-main nav ul li a i.fa-cog:hover {
-    transform: rotate(90deg) scale(1.1);
-}
 
 /* Main Content */
 main {
