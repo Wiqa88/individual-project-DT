@@ -811,6 +811,85 @@ window.createHabitFromTask = function(task) {
 
     return false;
 };
+// ADD this to your Habits.js file or in a script tag on your Habits.html page:
+
+document.addEventListener("DOMContentLoaded", function() {
+    console.log('🎯 HABITS: Setting up navigation...');
+
+    // Set up pomodoro navigation from habits page
+    const pomodoroLink = document.getElementById('pomodoro-link');
+
+    if (pomodoroLink) {
+        pomodoroLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('🍅 HABITS: Navigating to pomodoro page...');
+
+            // Redirect to the calendar page with pomodoro view
+            window.location.href = 'Cal.html#pomodoro';
+        });
+
+        console.log('✅ HABITS: Pomodoro navigation set up');
+    } else {
+        console.log('❌ HABITS: Pomodoro link not found');
+    }
+
+    // Optional: Set up other navigation links too
+    setupAllNavigation();
+});
+
+// Function to set up all navigation links
+function setupAllNavigation() {
+    // Navigation mappings
+    const navLinks = {
+        'todo.html': ['todo-link'], // if you have a todo link
+        'Cal.html': ['calendar-link'], // if you have a calendar link
+        'Matrix.html': ['matrix-link'], // if you have a matrix link
+        'Settings.html': ['settings-link'] // if you have a settings link
+    };
+
+    // Set up each navigation link
+    Object.entries(navLinks).forEach(([targetPage, linkIds]) => {
+        linkIds.forEach(linkId => {
+            const link = document.getElementById(linkId);
+            if (link) {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log(`🔗 HABITS: Navigating to ${targetPage}...`);
+                    window.location.href = targetPage;
+                });
+            }
+        });
+    });
+
+    // Set up navigation via images (your current setup)
+    const navImages = document.querySelectorAll('.sidebar-main nav ul li a');
+    navImages.forEach((link, index) => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            let targetPage = '';
+            switch(index) {
+                case 0: targetPage = 'todo.html'; break;
+                case 1: targetPage = 'Cal.html'; break;
+                case 2: targetPage = 'Cal.html#pomodoro'; break; // Pomodoro
+                case 3: targetPage = 'Matrix.html'; break;
+                case 4: targetPage = 'Habits.html'; break; // Current page
+                case 5: targetPage = 'Settings.html'; break;
+                default: return;
+            }
+
+            if (targetPage && targetPage !== 'Habits.html') {
+                console.log(`🔗 HABITS: Navigating to ${targetPage}...`);
+                window.location.href = targetPage;
+            }
+        });
+    });
+
+    console.log('✅ HABITS: All navigation links set up');
+}
+
+
+
 
 // Load habits from tasks on initialization
 document.addEventListener("DOMContentLoaded", function() {
