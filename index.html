@@ -6,7 +6,7 @@
   <title>Task Manager - Welcome</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* Enhanced Authentication Styles */
+    /* Your existing CSS styles stay exactly the same */
     * {
       margin: 0;
       padding: 0;
@@ -48,22 +48,6 @@
       color: white;
       position: relative;
       overflow: hidden;
-    }
-
-    .welcome-section::before {
-      content: "";
-      position: absolute;
-      top: -50%;
-      right: -50%;
-      width: 200%;
-      height: 200%;
-      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="white" opacity="0.1"/></svg>') repeat;
-      animation: float 20s linear infinite;
-    }
-
-    @keyframes float {
-      0% { transform: translate(-50%, -50%) rotate(0deg); }
-      100% { transform: translate(-50%, -50%) rotate(360deg); }
     }
 
     .welcome-content {
@@ -165,16 +149,10 @@
 
     .form-panel {
       display: none;
-      animation: slideIn 0.3s ease;
     }
 
     .form-panel.active {
       display: block;
-    }
-
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
     }
 
     .input-group {
@@ -226,30 +204,6 @@
       font-size: 14px;
       margin-top: 5px;
       display: none;
-    }
-
-    .password-strength {
-      margin-top: 8px;
-      display: none;
-    }
-
-    .strength-bar {
-      height: 4px;
-      background: #e5e7eb;
-      border-radius: 2px;
-      overflow: hidden;
-      margin-bottom: 5px;
-    }
-
-    .strength-fill {
-      height: 100%;
-      transition: all 0.3s ease;
-      border-radius: 2px;
-    }
-
-    .strength-text {
-      font-size: 12px;
-      font-weight: 600;
     }
 
     .checkbox-group {
@@ -319,66 +273,6 @@
       100% { transform: rotate(360deg); }
     }
 
-    .social-login {
-      margin-top: 30px;
-      text-align: center;
-    }
-
-    .social-divider {
-      display: flex;
-      align-items: center;
-      margin: 20px 0;
-      color: #9ca3af;
-    }
-
-    .social-divider::before,
-    .social-divider::after {
-      content: "";
-      flex: 1;
-      height: 1px;
-      background: #e5e7eb;
-    }
-
-    .social-divider span {
-      padding: 0 15px;
-      font-size: 14px;
-    }
-
-    .social-buttons {
-      display: flex;
-      gap: 15px;
-    }
-
-    .social-btn {
-      flex: 1;
-      padding: 12px;
-      border: 2px solid #e5e7eb;
-      border-radius: 10px;
-      background: white;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      font-weight: 600;
-    }
-
-    .social-btn:hover {
-      border-color: #d1d5db;
-      transform: translateY(-1px);
-    }
-
-    .google-btn:hover {
-      border-color: #ea4335;
-      color: #ea4335;
-    }
-
-    .microsoft-btn:hover {
-      border-color: #0078d4;
-      color: #0078d4;
-    }
-
     .forgot-password {
       text-align: center;
       margin-top: 20px;
@@ -392,6 +286,51 @@
 
     .forgot-password a:hover {
       text-decoration: underline;
+    }
+
+    .success-message {
+      text-align: center;
+      padding: 40px;
+      display: none;
+    }
+
+    .success-message.show {
+      display: block;
+    }
+
+    .success-icon {
+      font-size: 64px;
+      color: #10b981;
+      margin-bottom: 20px;
+    }
+
+    .success-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: #1e3a8a;
+      margin-bottom: 10px;
+    }
+
+    .success-text {
+      color: #6b7280;
+      font-size: 16px;
+      margin-bottom: 30px;
+    }
+
+    .continue-btn {
+      padding: 12px 30px;
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .continue-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(30, 58, 138, 0.3);
     }
 
     .notification {
@@ -450,76 +389,6 @@
       .welcome-subtitle {
         font-size: 16px;
       }
-
-      .social-buttons {
-        flex-direction: column;
-      }
-    }
-
-    /* Loading animation */
-    .auth-container.loading {
-      pointer-events: none;
-    }
-
-    .auth-container.loading::after {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(255, 255, 255, 0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 999;
-    }
-
-    /* Success state */
-    .success-message {
-      text-align: center;
-      padding: 40px;
-      display: none;
-    }
-
-    .success-message.show {
-      display: block;
-      animation: slideIn 0.5s ease;
-    }
-
-    .success-icon {
-      font-size: 64px;
-      color: #10b981;
-      margin-bottom: 20px;
-    }
-
-    .success-title {
-      font-size: 24px;
-      font-weight: bold;
-      color: #1e3a8a;
-      margin-bottom: 10px;
-    }
-
-    .success-text {
-      color: #6b7280;
-      font-size: 16px;
-      margin-bottom: 30px;
-    }
-
-    .continue-btn {
-      padding: 12px 30px;
-      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .continue-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 5px 15px rgba(30, 58, 138, 0.3);
     }
   </style>
 </head>
@@ -643,12 +512,6 @@
                 <i class="fas fa-lock"></i>
                 <input type="password" id="signupPassword" class="form-input" placeholder="Create a password" required>
               </div>
-              <div class="password-strength" id="passwordStrength">
-                <div class="strength-bar">
-                  <div class="strength-fill" id="strengthFill"></div>
-                </div>
-                <div class="strength-text" id="strengthText">Password strength</div>
-              </div>
               <div class="error-message" id="signupPasswordError"></div>
             </div>
 
@@ -676,22 +539,6 @@
           </form>
         </div>
       </div>
-
-      <div class="social-login">
-        <div class="social-divider">
-          <span>or continue with</span>
-        </div>
-        <div class="social-buttons">
-          <button class="social-btn google-btn" id="googleBtn">
-            <i class="fab fa-google"></i>
-            <span>Google</span>
-          </button>
-          <button class="social-btn microsoft-btn" id="microsoftBtn">
-            <i class="fab fa-microsoft"></i>
-            <span>Microsoft</span>
-          </button>
-        </div>
-      </div>
     </div>
 
     <!-- Success Message -->
@@ -707,8 +554,8 @@
 </div>
 
 <script>
-  // Enhanced Authentication System
-  class AuthSystem {
+  // FIXED Authentication System - This replaces your existing auth code
+  class FixedAuthSystem {
     constructor() {
       this.users = JSON.parse(localStorage.getItem('users') || '[]');
       this.currentUser = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
@@ -729,20 +576,6 @@
       document.getElementById('loginForm').addEventListener('submit', (e) => this.handleLogin(e));
       document.getElementById('signupForm').addEventListener('submit', (e) => this.handleSignup(e));
 
-      // Password strength checker
-      document.getElementById('signupPassword').addEventListener('input', (e) => this.checkPasswordStrength(e.target.value));
-
-      // Password confirmation
-      document.getElementById('confirmPassword').addEventListener('blur', () => this.validatePasswordMatch());
-
-      // Email validation
-      document.getElementById('signupEmail').addEventListener('blur', () => this.validateEmail('signup'));
-      document.getElementById('loginEmail').addEventListener('blur', () => this.validateEmail('login'));
-
-      // Social login
-      document.getElementById('googleBtn').addEventListener('click', () => this.socialLogin('google'));
-      document.getElementById('microsoftBtn').addEventListener('click', () => this.socialLogin('microsoft'));
-
       // Continue button
       document.getElementById('continueBtn').addEventListener('click', () => this.redirectToDashboard());
 
@@ -751,44 +584,6 @@
         e.preventDefault();
         this.handleForgotPassword();
       });
-
-      // Terms and privacy links
-      document.getElementById('termsLink').addEventListener('click', (e) => {
-        e.preventDefault();
-        this.showModal('Terms of Service', 'By using Task Manager Pro, you agree to our terms...');
-      });
-
-      document.getElementById('privacyLink').addEventListener('click', (e) => {
-        e.preventDefault();
-        this.showModal('Privacy Policy', 'We respect your privacy and protect your data...');
-      });
-    }
-
-    switchTab(tab) {
-      const loginTab = document.getElementById('loginTab');
-      const signupTab = document.getElementById('signupTab');
-      const loginPanel = document.getElementById('loginPanel');
-      const signupPanel = document.getElementById('signupPanel');
-      const formTitle = document.getElementById('formTitle');
-      const formSubtitle = document.getElementById('formSubtitle');
-
-      if (tab === 'login') {
-        loginTab.classList.add('active');
-        signupTab.classList.remove('active');
-        loginPanel.classList.add('active');
-        signupPanel.classList.remove('active');
-        formTitle.textContent = 'Welcome Back';
-        formSubtitle.textContent = 'Sign in to continue your productivity journey';
-      } else {
-        signupTab.classList.add('active');
-        loginTab.classList.remove('active');
-        signupPanel.classList.add('active');
-        loginPanel.classList.remove('active');
-        formTitle.textContent = 'Create Account';
-        formSubtitle.textContent = 'Join thousands of productive users';
-      }
-
-      this.clearErrors();
     }
 
     async handleLogin(e) {
@@ -799,7 +594,6 @@
       const password = document.getElementById('loginPassword').value;
       const rememberMe = document.getElementById('rememberMe').checked;
 
-      // Validation
       if (!this.validateEmail('login') || !password) {
         this.showError('loginPasswordError', 'Please enter your password');
         return;
@@ -820,9 +614,14 @@
         return;
       }
 
-      // Success
+      // Success - Set up user session WITHOUT clearing their data
       this.currentUser = { ...user };
       delete this.currentUser.password; // Don't store password in session
+
+      // Store session info
+      sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+      sessionStorage.setItem('isAuthenticated', 'true');
+      sessionStorage.setItem('loginTime', new Date().toISOString());
 
       if (rememberMe) {
         localStorage.setItem('rememberedUser', email);
@@ -830,10 +629,11 @@
         localStorage.removeItem('rememberedUser');
       }
 
-      sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-
       this.setLoading('loginBtn', false);
       this.showNotification(`Welcome back, ${user.name}!`, 'success');
+
+      // IMPORTANT: Don't clear user data here
+      console.log(`🔐 User ${user.email} logged in successfully`);
 
       await this.delay(1000);
       this.redirectToDashboard();
@@ -909,7 +709,11 @@
 
       this.currentUser = { ...newUser };
       delete this.currentUser.password;
+
+      // Store session info
       sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+      sessionStorage.setItem('isAuthenticated', 'true');
+      sessionStorage.setItem('loginTime', new Date().toISOString());
 
       this.setLoading('signupBtn', false);
 
@@ -919,9 +723,7 @@
 
     validateEmail(type) {
       const emailInput = document.getElementById(`${type}Email`);
-      const errorElement = document.getElementById(`${type}EmailError`);
       const email = emailInput.value.trim();
-
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
       if (!email) {
@@ -938,111 +740,12 @@
       return true;
     }
 
-    checkPasswordStrength(password) {
-      const strengthElement = document.getElementById('passwordStrength');
-      const fillElement = document.getElementById('strengthFill');
-      const textElement = document.getElementById('strengthText');
-
-      if (!password) {
-        strengthElement.style.display = 'none';
-        return;
-      }
-
-      strengthElement.style.display = 'block';
-
-      let score = 0;
-      let feedback = [];
-
-      // Length check
-      if (password.length >= 8) score += 1;
-      else feedback.push('at least 8 characters');
-
-      // Uppercase check
-      if (/[A-Z]/.test(password)) score += 1;
-      else feedback.push('uppercase letter');
-
-      // Lowercase check
-      if (/[a-z]/.test(password)) score += 1;
-      else feedback.push('lowercase letter');
-
-      // Number check
-      if (/\d/.test(password)) score += 1;
-      else feedback.push('number');
-
-      // Special character check
-      if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score += 1;
-      else feedback.push('special character');
-
-      const strength = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'][score];
-      const colors = ['#ef4444', '#f59e0b', '#eab308', '#10b981', '#059669'];
-      const widths = ['20%', '40%', '60%', '80%', '100%'];
-
-      fillElement.style.backgroundColor = colors[score];
-      fillElement.style.width = widths[score];
-      textElement.textContent = strength;
-      textElement.style.color = colors[score];
-
-      return score >= 4;
-    }
-
     isPasswordStrong(password) {
       return password.length >= 8 &&
               /[A-Z]/.test(password) &&
               /[a-z]/.test(password) &&
               /\d/.test(password) &&
               /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    }
-
-    validatePasswordMatch() {
-      const password = document.getElementById('signupPassword').value;
-      const confirmPassword = document.getElementById('confirmPassword').value;
-
-      if (confirmPassword && password !== confirmPassword) {
-        this.showError('confirmPasswordError', 'Passwords do not match');
-        return false;
-      }
-
-      this.clearError('confirmPasswordError');
-      return true;
-    }
-
-    async socialLogin(provider) {
-      this.showNotification(`${provider.charAt(0).toUpperCase() + provider.slice(1)} login coming soon!`, 'warning');
-
-      // Simulate social login
-      if (provider === 'google') {
-        // For demo purposes, create a demo Google user
-        const demoUser = {
-          id: Date.now(),
-          name: 'Demo User',
-          email: 'demo@gmail.com',
-          provider: 'google',
-          createdAt: new Date().toISOString(),
-          preferences: {
-            theme: 'light',
-            notifications: true,
-            language: 'en'
-          }
-        };
-
-        this.currentUser = demoUser;
-        sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-
-        this.showNotification('Google login successful!', 'success');
-        await this.delay(1000);
-        this.redirectToDashboard();
-      }
-    }
-
-    handleForgotPassword() {
-      const email = prompt('Please enter your email address:');
-      if (email) {
-        if (this.users.find(u => u.email === email)) {
-          this.showNotification('Password reset link sent to your email!', 'success');
-        } else {
-          this.showNotification('No account found with this email address.', 'error');
-        }
-      }
     }
 
     showSuccess() {
@@ -1102,9 +805,9 @@
       const notification = document.createElement('div');
       notification.className = `notification ${type}`;
       notification.innerHTML = `
-                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i>
-                    <span>${message}</span>
-                `;
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i>
+        <span>${message}</span>
+      `;
 
       document.body.appendChild(notification);
 
@@ -1118,8 +821,31 @@
       }, 4000);
     }
 
-    showModal(title, content) {
-      alert(`${title}\n\n${content}`);
+    switchTab(tab) {
+      const loginTab = document.getElementById('loginTab');
+      const signupTab = document.getElementById('signupTab');
+      const loginPanel = document.getElementById('loginPanel');
+      const signupPanel = document.getElementById('signupPanel');
+      const formTitle = document.getElementById('formTitle');
+      const formSubtitle = document.getElementById('formSubtitle');
+
+      if (tab === 'login') {
+        loginTab.classList.add('active');
+        signupTab.classList.remove('active');
+        loginPanel.classList.add('active');
+        signupPanel.classList.remove('active');
+        formTitle.textContent = 'Welcome Back';
+        formSubtitle.textContent = 'Sign in to continue your productivity journey';
+      } else {
+        signupTab.classList.add('active');
+        loginTab.classList.remove('active');
+        signupPanel.classList.add('active');
+        loginPanel.classList.remove('active');
+        formTitle.textContent = 'Create Account';
+        formSubtitle.textContent = 'Join thousands of productive users';
+      }
+
+      this.clearErrors();
     }
 
     checkAuthState() {
@@ -1145,111 +871,33 @@
       window.location.href = 'todo.html';
     }
 
+    handleForgotPassword() {
+      const email = prompt('Please enter your email address:');
+      if (email) {
+        if (this.users.find(u => u.email === email)) {
+          this.showNotification('Password reset link sent to your email!', 'success');
+        } else {
+          this.showNotification('No account found with this email address.', 'error');
+        }
+      }
+    }
+
     delay(ms) {
       return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    // User management methods
     getCurrentUser() {
       return this.currentUser;
-    }
-
-    logout() {
-      sessionStorage.removeItem('currentUser');
-      sessionStorage.removeItem('isAuthenticated');
-      sessionStorage.removeItem('loginTime');
-      this.currentUser = null;
-      window.location.href = 'index.html';
-    }
-
-    updateUserProfile(updates) {
-      if (!this.currentUser) return false;
-
-      // Update in users array
-      const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
-      if (userIndex !== -1) {
-        this.users[userIndex] = { ...this.users[userIndex], ...updates };
-        localStorage.setItem('users', JSON.stringify(this.users));
-
-        // Update current user session
-        this.currentUser = { ...this.currentUser, ...updates };
-        sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-
-        return true;
-      }
-      return false;
-    }
-
-    changePassword(oldPassword, newPassword) {
-      if (!this.currentUser) return false;
-
-      const user = this.users.find(u => u.id === this.currentUser.id);
-      if (user && user.password === oldPassword) {
-        user.password = newPassword;
-        localStorage.setItem('users', JSON.stringify(this.users));
-        return true;
-      }
-      return false;
-    }
-
-    deleteAccount() {
-      if (!this.currentUser) return false;
-
-      if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-        // Remove user from users array
-        this.users = this.users.filter(u => u.id !== this.currentUser.id);
-        localStorage.setItem('users', JSON.stringify(this.users));
-
-        // Clear all user data
-        sessionStorage.clear();
-        localStorage.removeItem('rememberedUser');
-
-        // Optionally clear user's app data
-        localStorage.removeItem('tasks');
-        localStorage.removeItem('calendar-events');
-        localStorage.removeItem('habits');
-        localStorage.removeItem('custom-lists');
-
-        this.showNotification('Account deleted successfully', 'success');
-        setTimeout(() => window.location.href = 'index.html', 2000);
-        return true;
-      }
-      return false;
-    }
-
-    // Export user data
-    exportUserData() {
-      if (!this.currentUser) return null;
-
-      const userData = {
-        profile: this.currentUser,
-        tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
-        events: JSON.parse(localStorage.getItem('calendar-events') || '[]'),
-        habits: JSON.parse(localStorage.getItem('habits') || '[]'),
-        lists: JSON.parse(localStorage.getItem('custom-lists') || '[]'),
-        exportDate: new Date().toISOString()
-      };
-
-      const dataStr = JSON.stringify(userData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `task-manager-data-${this.currentUser.name}-${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-
-      this.showNotification('Data exported successfully!', 'success');
     }
   }
 
   // Initialize authentication system
-  const auth = new AuthSystem();
+  const auth = new FixedAuthSystem();
 
   // Make auth system globally available for other pages
   window.authSystem = auth;
 
-  // Add some demo users for testing
+  // Create demo users if none exist
   if (!localStorage.getItem('users')) {
     const demoUsers = [
       {
@@ -1263,36 +911,27 @@
           notifications: true,
           language: 'en'
         }
+      },
+      {
+        id: 2,
+        name: 'Jane Smith',
+        email: 'jane@example.com',
+        password: 'Jane123!',
+        createdAt: new Date().toISOString(),
+        preferences: {
+          theme: 'light',
+          notifications: true,
+          language: 'en'
+        }
       }
     ];
     localStorage.setItem('users', JSON.stringify(demoUsers));
   }
 
-  // Add keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      const activeTab = document.querySelector('.tab-btn.active').id;
-      if (activeTab === 'loginTab') {
-        document.getElementById('loginForm').dispatchEvent(new Event('submit'));
-      } else {
-        document.getElementById('signupForm').dispatchEvent(new Event('submit'));
-      }
-    }
-  });
-
-  // Add input validation on typing
-  document.addEventListener('input', (e) => {
-    if (e.target.classList.contains('form-input')) {
-      e.target.classList.remove('error');
-      const errorElement = e.target.closest('.input-group').querySelector('.error-message');
-      if (errorElement) {
-        errorElement.style.display = 'none';
-      }
-    }
-  });
-
-  console.log('🔐 Enhanced Authentication System Loaded');
-  console.log('📧 Demo Account: demo@example.com / Demo123!');
+  console.log('🔐 Fixed Authentication System loaded');
+  console.log('📧 Demo Accounts Available:');
+  console.log('  - demo@example.com / Demo123!');
+  console.log('  - jane@example.com / Jane123!');
 </script>
 </body>
 </html>

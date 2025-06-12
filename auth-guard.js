@@ -1,5 +1,5 @@
-// auth-guard.js - Authentication Guard for Protected Pages
-// Add this script to all your protected pages (todo.html, Cal.html, Matrix.html, Habits.html, Settings.html)
+// ENHANCED auth-guard.js - Complete replacement with user data isolation
+// This ensures proper user authentication and data separation
 
 class AuthGuard {
     constructor() {
@@ -11,7 +11,6 @@ class AuthGuard {
     init() {
         this.checkAuthState();
         this.setupSessionManagement();
-        this.setupLogoutHandlers();
         this.setupUserDisplay();
     }
 
@@ -40,13 +39,38 @@ class AuthGuard {
         try {
             this.currentUser = JSON.parse(currentUser);
             this.isAuthenticated = true;
-            console.log(`👤 User authenticated: ${this.currentUser.name}`);
+            console.log(`👤 User authenticated: ${this.currentUser.name} (${this.currentUser.email})`);
+
+            // CRITICAL: Initialize user data context immediately
+            this.initializeUserDataContext();
             return true;
         } catch (error) {
             console.error('Error parsing user data:', error);
             this.redirectToLogin('Authentication error. Please sign in again.');
             return false;
         }
+    }
+
+    // CRITICAL: Initialize user-specific data context
+    initializeUserDataContext() {
+        console.log(`🔄 Initializing data context for: ${this.currentUser.email}`);
+
+        // Wait for user data manager and initialize
+        const initUserData = () => {
+            if (window.userDataManager) {
+                window.userDataManager.switchUser(this.currentUser);
+                console.log(`✅ User data context initialized for ${this.currentUser.email}`);
+
+                // Show welcome message
+                setTimeout(() => {
+                    this.showNotification(`Welcome back, ${this.currentUser.name}!`, 'success');
+                }, 500);
+            } else {
+                setTimeout(initUserData, 100);
+            }
+        };
+
+        setTimeout(initUserData, 100);
     }
 
     setupSessionManagement() {
@@ -62,7 +86,7 @@ class AuthGuard {
         // Check for session expiry every 5 minutes
         setInterval(() => this.checkSessionExpiry(), 5 * 60 * 1000);
 
-        // Listen for storage changes (logout from another tab)
+        // Listen for logout from another tab
         window.addEventListener('storage', (e) => {
             if (e.key === 'userLoggedOut') {
                 this.logout('Logged out from another tab');
@@ -86,23 +110,6 @@ class AuthGuard {
         if (minutesSinceActivity > 30) {
             this.logout('Session expired due to inactivity');
         }
-    }
-
-    setupLogoutHandlers() {
-        // Add logout functionality to existing elements
-        const logoutButtons = document.querySelectorAll('[data-logout]');
-        logoutButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.logout();
-            });
-        });
-
-        // Handle browser close/refresh
-        window.addEventListener('beforeunload', () => {
-            // Update last seen time
-            sessionStorage.setItem('lastSeen', new Date().toISOString());
-        });
     }
 
     setupUserDisplay() {
@@ -132,96 +139,30 @@ class AuthGuard {
             el.textContent = initials;
         });
 
-        // Add user menu if it doesn't exist
-        this.addUserMenu();
-    }
-
-    addUserMenu() {
-        // Check if user menu already exists
-        if (document.getElementById('userMenu')) return;
-
-        // Find the settings icon or suitable location
-        const settingsIcon = document.querySelector('.settings-li a');
-        if (!settingsIcon) return;
-
-        // Create user menu
-        const userMenu = document.createElement('div');
-        userMenu.id = 'userMenu';
-        userMenu.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            padding: 10px;
-            z-index: 1000;
-            min-width: 200px;
-            border: 1px solid #e5e7eb;
-        `;
-
-        userMenu.innerHTML = `
-            <div style="padding: 10px; border-bottom: 1px solid #e5e7eb; margin-bottom: 10px;">
-                <div style="font-weight: bold; color: #1e3a8a;">${this.currentUser.name}</div>
-                <div style="font-size: 12px; color: #6b7280;">${this.currentUser.email}</div>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 5px;">
-                <button onclick="authGuard.exportData()" style="padding: 8px 12px; text-align: left; border: none; background: none; cursor: pointer; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
-                    <i class="fas fa-download" style="margin-right: 8px; color: #6b7280;"></i>
-                    Export Data
-                </button>
-                <button onclick="authGuard.logout()" style="padding: 8px 12px; text-align: left; border: none; background: none; cursor: pointer; border-radius: 6px; color: #dc2626; transition: background 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='none'">
-                    <i class="fas fa-sign-out-alt" style="margin-right: 8px;"></i>
-                    Sign Out
-                </button>
-            </div>
-        `;
-
-        document.body.appendChild(userMenu);
-
-        // Toggle menu visibility
-        let menuVisible = false;
-        settingsIcon.addEventListener('click', (e) => {
-            e.preventDefault();
-            menuVisible = !menuVisible;
-            userMenu.style.display = menuVisible ? 'block' : 'none';
-        });
-
-        // Hide menu when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!userMenu.contains(e.target) && !settingsIcon.contains(e.target)) {
-                menuVisible = false;
-                userMenu.style.display = 'none';
-            }
-        });
-
-        // Initially hide the menu
-        userMenu.style.display = 'none';
+        console.log(`✅ User display updated for ${this.currentUser.name}`);
     }
 
     redirectToLogin(message = 'Please sign in to continue') {
-        // Store the current page to redirect back after login
         sessionStorage.setItem('redirectAfterLogin', window.location.pathname);
-
-        // Show notification if possible
-        if (typeof this.showNotification === 'function') {
-            this.showNotification(message, 'warning');
-        } else {
-            alert(message);
-        }
-
-        // Redirect to login page after a short delay
+        this.showNotification(message, 'warning');
         setTimeout(() => {
             window.location.href = 'index.html';
         }, 1000);
     }
 
     logout(message = 'Logged out successfully') {
-        // Confirm logout
         if (!message.includes('expired') && !message.includes('another tab')) {
             if (!confirm('Are you sure you want to sign out?')) {
                 return;
             }
+        }
+
+        console.log(`👋 Logging out ${this.currentUser?.email || 'user'}...`);
+
+        // CRITICAL: Save current user data before logout
+        if (window.userDataManager && this.currentUser) {
+            window.userDataManager.saveCurrentUserData();
+            console.log('💾 User data saved before logout');
         }
 
         // Clear session data
@@ -231,21 +172,27 @@ class AuthGuard {
         sessionStorage.removeItem('lastActivity');
         sessionStorage.removeItem('redirectAfterLogin');
 
+        // CRITICAL: Clear current user's data from global storage
+        if (window.userDataManager) {
+            window.userDataManager.clearGlobalStorageForUserSwitch();
+            console.log('🧹 Global storage cleared for logout');
+        }
+
         // Signal logout to other tabs
         localStorage.setItem('userLoggedOut', Date.now().toString());
         setTimeout(() => localStorage.removeItem('userLoggedOut'), 1000);
 
-        // Show notification
+        this.currentUser = null;
+        this.isAuthenticated = false;
+
         this.showNotification(message, 'success');
 
-        // Redirect to login page
         setTimeout(() => {
             window.location.href = 'index.html';
         }, 1000);
     }
 
     showNotification(message, type = 'info') {
-        // Create notification if it doesn't exist
         const notification = document.createElement('div');
         notification.style.cssText = `
             position: fixed;
@@ -267,13 +214,11 @@ class AuthGuard {
 
         document.body.appendChild(notification);
 
-        // Show notification
         setTimeout(() => {
             notification.style.opacity = '1';
             notification.style.transform = 'translateX(-50%) translateY(0)';
         }, 100);
 
-        // Hide notification after 3 seconds
         setTimeout(() => {
             notification.style.opacity = '0';
             notification.style.transform = 'translateX(-50%) translateY(-20px)';
@@ -281,36 +226,42 @@ class AuthGuard {
         }, 3000);
     }
 
+    // Export user data
     exportData() {
         if (!this.currentUser) return;
 
         try {
-            const userData = {
-                profile: {
-                    name: this.currentUser.name,
-                    email: this.currentUser.email,
-                    createdAt: this.currentUser.createdAt,
-                    preferences: this.currentUser.preferences
-                },
-                tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
-                events: JSON.parse(localStorage.getItem('calendar-events') || '[]'),
-                habits: JSON.parse(localStorage.getItem('habits') || '[]'),
-                lists: JSON.parse(localStorage.getItem('custom-lists') || '[]'),
-                settings: JSON.parse(localStorage.getItem('app-settings') || '{}'),
-                exportDate: new Date().toISOString(),
-                version: '1.0'
-            };
+            let userData;
+
+            if (window.userDataManager) {
+                userData = window.userDataManager.exportUserData();
+            } else {
+                // Fallback export
+                userData = {
+                    profile: {
+                        name: this.currentUser.name,
+                        email: this.currentUser.email,
+                        createdAt: this.currentUser.createdAt
+                    },
+                    tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
+                    events: JSON.parse(localStorage.getItem('calendar-events') || '[]'),
+                    habits: JSON.parse(localStorage.getItem('habits') || '[]'),
+                    lists: JSON.parse(localStorage.getItem('custom-lists') || '[]'),
+                    exportDate: new Date().toISOString(),
+                    version: '2.0'
+                };
+            }
 
             const dataStr = JSON.stringify(userData, null, 2);
             const dataBlob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `task-manager-backup-${this.currentUser.name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.json`;
+            link.download = `${this.currentUser.name.replace(/\s+/g, '-')}-data-${new Date().toISOString().split('T')[0]}.json`;
             link.click();
             URL.revokeObjectURL(url);
 
-            this.showNotification('Data exported successfully!', 'success');
+            this.showNotification('Your data exported successfully!', 'success');
         } catch (error) {
             console.error('Export error:', error);
             this.showNotification('Failed to export data', 'error');
@@ -326,60 +277,37 @@ class AuthGuard {
         return this.isAuthenticated;
     }
 
-    updateUserSession(updates) {
-        if (!this.currentUser) return false;
+    // CRITICAL: Method to handle user switching (when different user logs in)
+    switchUser(newUser) {
+        if (this.currentUser && this.currentUser.email !== newUser.email) {
+            console.log(`🔄 Switching user from ${this.currentUser.email} to ${newUser.email}`);
 
-        this.currentUser = { ...this.currentUser, ...updates };
-        sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-        this.setupUserDisplay();
-        return true;
-    }
-
-    // Check if user has specific permissions (for future use)
-    hasPermission(permission) {
-        if (!this.currentUser) return false;
-
-        // For now, all authenticated users have all permissions
-        // This can be expanded for role-based access control
-        return true;
-    }
-
-    // Get user preferences
-    getUserPreference(key, defaultValue = null) {
-        if (!this.currentUser || !this.currentUser.preferences) return defaultValue;
-        return this.currentUser.preferences[key] || defaultValue;
-    }
-
-    // Set user preference
-    setUserPreference(key, value) {
-        if (!this.currentUser) return false;
-
-        if (!this.currentUser.preferences) {
-            this.currentUser.preferences = {};
-        }
-
-        this.currentUser.preferences[key] = value;
-        sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-
-        // Also update in localStorage users array if available
-        try {
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            const userIndex = users.findIndex(u => u.id === this.currentUser.id);
-            if (userIndex !== -1) {
-                users[userIndex].preferences = this.currentUser.preferences;
-                localStorage.setItem('users', JSON.stringify(users));
+            // Save current user's data
+            if (window.userDataManager) {
+                window.userDataManager.saveCurrentUserData();
             }
-        } catch (error) {
-            console.error('Error updating user preferences:', error);
         }
 
-        return true;
+        this.currentUser = newUser;
+        this.isAuthenticated = true;
+
+        // Update session storage
+        sessionStorage.setItem('currentUser', JSON.stringify(newUser));
+        sessionStorage.setItem('isAuthenticated', 'true');
+        sessionStorage.setItem('loginTime', new Date().toISOString());
+
+        // Initialize user data context
+        this.initializeUserDataContext();
+        this.setupUserDisplay();
+
+        console.log(`✅ User switched to ${newUser.email}`);
     }
 }
 
 // Initialize auth guard when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.authGuard = new AuthGuard();
+    console.log('🛡️ Auth Guard initialized');
 });
 
 // Handle redirect after login
@@ -387,13 +315,58 @@ window.addEventListener('load', () => {
     const redirectPath = sessionStorage.getItem('redirectAfterLogin');
     if (redirectPath && redirectPath !== window.location.pathname) {
         sessionStorage.removeItem('redirectAfterLogin');
-        // If user was redirected here after login, show welcome message
         if (window.authGuard && window.authGuard.getCurrentUser()) {
             setTimeout(() => {
-                window.authGuard.showNotification(`Welcome back, ${window.authGuard.getCurrentUser().name}!`, 'success');
+                window.authGuard.showNotification(`Welcome back! Your personal data is ready.`, 'success');
             }, 500);
         }
     }
 });
 
-console.log('🛡️ Authentication Guard loaded');
+// Listen for user login events from authentication page
+window.addEventListener('message', (event) => {
+    if (event.data.type === 'USER_LOGGED_IN' && event.data.user) {
+        if (window.authGuard) {
+            window.authGuard.switchUser(event.data.user);
+        }
+    }
+});
+
+// CRITICAL: Override any existing auth functions to ensure data isolation
+window.addEventListener('load', () => {
+    // If there's an existing auth system, enhance it
+    if (window.authSystem) {
+        const originalHandleLogin = window.authSystem.handleLogin;
+
+        if (originalHandleLogin) {
+            window.authSystem.handleLogin = async function(e) {
+                const result = await originalHandleLogin.call(this, e);
+
+                // After successful login, ensure auth guard knows about the user
+                if (this.currentUser && window.authGuard) {
+                    window.authGuard.switchUser(this.currentUser);
+                }
+
+                return result;
+            };
+        }
+    }
+});
+
+console.log('🛡️ Enhanced Auth Guard with User Data Integration loaded');
+
+// Debug function to check current user and data
+window.debugAuth = function() {
+    console.log('=== AUTH DEBUG ===');
+    console.log('Current User:', window.authGuard?.getCurrentUser());
+    console.log('Is Authenticated:', window.authGuard?.isUserAuthenticated());
+    console.log('Session Storage:', {
+        isAuthenticated: sessionStorage.getItem('isAuthenticated'),
+        currentUser: sessionStorage.getItem('currentUser'),
+        loginTime: sessionStorage.getItem('loginTime')
+    });
+
+    if (window.userDataManager) {
+        console.log('User Data Stats:', window.userDataManager.getStorageStats());
+    }
+};
