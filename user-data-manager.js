@@ -1,5 +1,5 @@
-// FIXED user-data-manager.js - Complete replacement for proper user isolation
-// This ensures each user has completely separate data
+// ENHANCED user-data-manager.js - Complete replacement with password reset support
+// This ensures each user has completely separate data and handles password changes
 
 class UserDataManager {
     constructor() {
@@ -16,6 +16,58 @@ class UserDataManager {
         } else {
             // Wait for auth guard to load
             setTimeout(() => this.init(), 100);
+        }
+
+        // Listen for password reset completion events
+        this.setupPasswordResetHandling();
+    }
+
+    setupPasswordResetHandling() {
+        // Listen for password changes from other tabs/windows
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'passwordResetCompleted') {
+                const data = JSON.parse(e.newValue || '{}');
+                if (data.email && this.currentUser && this.currentUser.email === data.email) {
+                    console.log(`🔄 Password reset detected for current user: ${data.email}`);
+                    // Optionally refresh user data or show notification
+                    this.handlePasswordResetForCurrentUser(data);
+                }
+            }
+        });
+
+        // Listen for user updates from authentication system
+        window.addEventListener('userUpdated', (e) => {
+            if (e.detail && e.detail.email === this.currentUser?.email) {
+                console.log(`👤 User data updated: ${e.detail.email}`);
+                this.handleUserDataUpdate(e.detail);
+            }
+        });
+    }
+
+    handlePasswordResetForCurrentUser(resetData) {
+        console.log(`🔐 Handling password reset for current user: ${resetData.email}`);
+
+        // Save current state
+        this.saveCurrentUserData();
+
+        // Show notification
+        if (window.authGuard) {
+            window.authGuard.showNotification('Your password has been updated successfully!', 'success');
+        }
+
+        // Update any cached user information if needed
+        if (resetData.updatedUser && this.currentUser) {
+            this.currentUser = { ...this.currentUser, ...resetData.updatedUser };
+            sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+        }
+    }
+
+    handleUserDataUpdate(updatedData) {
+        if (this.currentUser && this.currentUser.email === updatedData.email) {
+            // Update current user data
+            this.currentUser = { ...this.currentUser, ...updatedData };
+            sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+            console.log(`✅ User data updated for ${this.currentUser.email}`);
         }
     }
 
@@ -199,6 +251,54 @@ class UserDataManager {
         return true;
     }
 
+    // Handle user account updates (like password changes)
+    updateUserAccount(updatedUserData) {
+        if (!this.currentUser || !updatedUserData.email) return false;
+
+        // If this is the current user, update their information
+        if (this.currentUser.email === updatedUserData.email) {
+            this.currentUser = { ...this.currentUser, ...updatedUserData };
+
+            // Update session storage
+            sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+
+            // Trigger user updated event
+            window.dispatchEvent(new CustomEvent('userUpdated', {
+                detail: this.currentUser
+            }));
+
+            console.log(`👤 Updated account data for ${this.currentUser.email}`);
+            return true;
+        }
+
+        return false;
+    }
+
+    // Migrate user data if user identifier changes (e.g., email change)
+    migrateUserData(oldIdentifier, newIdentifier) {
+        const dataTypes = ['tasks', 'calendar-events', 'habits', 'custom-lists'];
+        let migrated = false;
+
+        dataTypes.forEach(dataType => {
+            const oldKey = `${this.userDataPrefix}${oldIdentifier.replace(/[^a-zA-Z0-9]/g, '_')}_${dataType}`;
+            const newKey = `${this.userDataPrefix}${newIdentifier.replace(/[^a-zA-Z0-9]/g, '_')}_${dataType}`;
+
+            const oldData = localStorage.getItem(oldKey);
+            if (oldData) {
+                localStorage.setItem(newKey, oldData);
+                localStorage.removeItem(oldKey);
+                migrated = true;
+                console.log(`📦 Migrated ${dataType} from ${oldIdentifier} to ${newIdentifier}`);
+            }
+        });
+
+        if (migrated) {
+            console.log(`✅ User data migration completed: ${oldIdentifier} → ${newIdentifier}`);
+        }
+
+        return migrated;
+    }
+
     // Get storage statistics for current user
     getStorageStats() {
         if (!this.currentUser) return null;
@@ -232,7 +332,8 @@ class UserDataManager {
                 id: this.currentUser.id
             },
             data: {},
-            exportDate: new Date().toISOString()
+            exportDate: new Date().toISOString(),
+            version: '2.1' // Updated version to indicate password reset support
         };
 
         const dataTypes = ['tasks', 'calendar-events', 'habits', 'custom-lists'];
@@ -243,12 +344,85 @@ class UserDataManager {
 
         return exportData;
     }
+
+    // Import user data (with validation)
+    importUserData(importData) {
+        if (!this.currentUser || !importData || !importData.data) {
+            console.error('Invalid import data or no current user');
+            return false;
+        }
+
+        try {
+            const dataTypes = ['tasks', 'calendar-events', 'habits', 'custom-lists'];
+            let imported = false;
+
+            dataTypes.forEach(dataType => {
+                if (importData.data[dataType]) {
+                    this.setUserData(dataType, importData.data[dataType]);
+                    imported = true;
+                    console.log(`📥 Imported ${dataType} for ${this.currentUser.email}`);
+                }
+            });
+
+            if (imported) {
+                console.log(`✅ Data import completed for ${this.currentUser.email}`);
+
+                // Trigger data reload if functions exist
+                setTimeout(() => {
+                    if (window.loadTasks) window.loadTasks();
+                    if (window.loadLists) window.loadLists();
+                    if (window.loadHabits) window.loadHabits();
+                }, 100);
+            }
+
+            return imported;
+        } catch (error) {
+            console.error('Error importing user data:', error);
+            return false;
+        }
+    }
+
+    // Get all users with data (for admin purposes)
+    getAllUsersWithData() {
+        const users = [];
+        const allKeys = Object.keys(localStorage);
+        const userKeys = allKeys.filter(key => key.startsWith(this.userDataPrefix));
+
+        const userIds = [...new Set(userKeys.map(key => {
+            const parts = key.split('_');
+            return parts.slice(2, -1).join('_'); // Extract user ID
+        }))];
+
+        userIds.forEach(userId => {
+            const userData = {
+                userId,
+                data: {}
+            };
+
+            const dataTypes = ['tasks', 'calendar-events', 'habits', 'custom-lists'];
+            dataTypes.forEach(dataType => {
+                const key = `${this.userDataPrefix}${userId}_${dataType}`;
+                const data = localStorage.getItem(key);
+                if (data) {
+                    try {
+                        userData.data[dataType] = JSON.parse(data);
+                    } catch (error) {
+                        console.error(`Error parsing data for ${key}:`, error);
+                    }
+                }
+            });
+
+            users.push(userData);
+        });
+
+        return users;
+    }
 }
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.userDataManager = new UserDataManager();
-    console.log('🗂️ User Data Manager initialized');
+    console.log('🗂️ Enhanced User Data Manager with Password Reset Support initialized');
 });
 
 // CRITICAL: Update auth guard to use user data manager
@@ -298,7 +472,34 @@ function enhanceAuthGuardWithUserData() {
         return originalLogout(message);
     };
 
-    console.log('🔒 Auth Guard enhanced with user data management');
+    // Add method to handle password updates
+    window.authGuard.updateUserPassword = function(email, newPassword) {
+        if (window.userDataManager && this.currentUser && this.currentUser.email === email) {
+            // Update user information
+            const updatedUser = { ...this.currentUser };
+            // Note: We don't store passwords in currentUser for security
+
+            window.userDataManager.updateUserAccount(updatedUser);
+
+            // Signal password reset completion
+            localStorage.setItem('passwordResetCompleted', JSON.stringify({
+                email: email,
+                timestamp: new Date().toISOString(),
+                updatedUser: updatedUser
+            }));
+
+            // Clean up the signal after a short delay
+            setTimeout(() => {
+                localStorage.removeItem('passwordResetCompleted');
+            }, 1000);
+
+            console.log(`🔐 Password updated for user: ${email}`);
+            return true;
+        }
+        return false;
+    };
+
+    console.log('🔒 Auth Guard enhanced with user data management and password reset support');
 }
 
 // Initialize the enhancement
@@ -357,13 +558,13 @@ function enhanceToDoWithUserData() {
         };
     }
 
-    console.log('📝 Todo functions enhanced with user data management');
+    console.log('📝 Todo functions enhanced with user data management and password reset support');
 }
 
 // Initialize todo enhancement
 setTimeout(enhanceToDoWithUserData, 1000);
 
-console.log('🗂️ User-specific storage system loaded');
+console.log('🗂️ Enhanced User-specific storage system with password reset support loaded');
 
 // TESTING FUNCTIONS (remove in production)
 window.testUserData = function() {
@@ -384,5 +585,22 @@ window.clearCurrentUserData = function() {
     if (confirm('Clear all data for current user? This cannot be undone!')) {
         window.userDataManager.clearUserData();
         location.reload();
+    }
+};
+
+window.exportCurrentUserData = function() {
+    if (window.userDataManager) {
+        const data = window.userDataManager.exportUserData();
+        if (data) {
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${data.user.name.replace(/\s+/g, '-')}-data-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            console.log('📥 User data exported successfully');
+        }
     }
 };

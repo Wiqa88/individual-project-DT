@@ -1,10 +1,11 @@
-// ENHANCED auth-guard.js - Complete replacement with user data isolation
-// This ensures proper user authentication and data separation
+// ENHANCED auth-guard.js - Complete replacement with password reset support
+// This ensures proper user authentication and data separation with password reset functionality
 
 class AuthGuard {
     constructor() {
         this.currentUser = null;
         this.isAuthenticated = false;
+        this.passwordReset = new PasswordResetManager();
         this.init();
     }
 
@@ -12,6 +13,20 @@ class AuthGuard {
         this.checkAuthState();
         this.setupSessionManagement();
         this.setupUserDisplay();
+        this.setupPasswordResetHandling();
+    }
+
+    // Password Reset Manager for handling reset tokens
+    setupPasswordResetHandling() {
+        // Listen for password reset events from other windows/tabs
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'passwordResetCompleted') {
+                const data = JSON.parse(e.newValue || '{}');
+                if (data.email) {
+                    this.showNotification(`Password reset completed for ${data.email}`, 'success');
+                }
+            }
+        });
     }
 
     checkAuthState() {
@@ -302,12 +317,138 @@ class AuthGuard {
 
         console.log(`✅ User switched to ${newUser.email}`);
     }
+
+    // Password reset utility methods
+    initiatePasswordReset(email) {
+        if (this.passwordReset) {
+            return this.passwordReset.createResetToken(email);
+        }
+        return null;
+    }
+
+    validatePasswordResetToken(token) {
+        if (this.passwordReset) {
+            return this.passwordReset.validateResetToken(token);
+        }
+        return { valid: false, error: 'Password reset not available' };
+    }
+}
+
+// Password Reset Manager - handles token generation and validation
+class PasswordResetManager {
+    constructor() {
+        this.resetTokens = JSON.parse(localStorage.getItem('resetTokens') || '{}');
+        this.init();
+    }
+
+    init() {
+        this.cleanupExpiredTokens();
+    }
+
+    // Generate a secure reset token
+    generateResetToken() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let token = '';
+        for (let i = 0; i < 32; i++) {
+            token += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return token;
+    }
+
+    // Create reset token for user
+    createResetToken(email) {
+        const token = this.generateResetToken();
+        const expiry = new Date();
+        expiry.setHours(expiry.getHours() + 1); // Token expires in 1 hour
+
+        this.resetTokens[token] = {
+            email: email,
+            expiry: expiry.toISOString(),
+            used: false,
+            createdAt: new Date().toISOString()
+        };
+
+        localStorage.setItem('resetTokens', JSON.stringify(this.resetTokens));
+        console.log(`🔑 Reset token created for ${email}: ${token}`);
+        return token;
+    }
+
+    // Validate reset token
+    validateResetToken(token) {
+        const tokenData = this.resetTokens[token];
+
+        if (!tokenData) {
+            return { valid: false, error: 'Invalid reset token' };
+        }
+
+        if (tokenData.used) {
+            return { valid: false, error: 'Reset token has already been used' };
+        }
+
+        if (new Date() > new Date(tokenData.expiry)) {
+            return { valid: false, error: 'Reset token has expired' };
+        }
+
+        return { valid: true, email: tokenData.email };
+    }
+
+    // Mark token as used
+    markTokenAsUsed(token) {
+        if (this.resetTokens[token]) {
+            this.resetTokens[token].used = true;
+            this.resetTokens[token].usedAt = new Date().toISOString();
+            localStorage.setItem('resetTokens', JSON.stringify(this.resetTokens));
+            console.log(`✅ Reset token marked as used: ${token}`);
+        }
+    }
+
+    // Clean up expired tokens
+    cleanupExpiredTokens() {
+        const now = new Date();
+        let cleaned = false;
+
+        for (const token in this.resetTokens) {
+            if (new Date(this.resetTokens[token].expiry) < now) {
+                delete this.resetTokens[token];
+                cleaned = true;
+            }
+        }
+
+        if (cleaned) {
+            localStorage.setItem('resetTokens', JSON.stringify(this.resetTokens));
+            console.log('🧹 Cleaned up expired reset tokens');
+        }
+    }
+
+    // Get reset token statistics (for debugging)
+    getTokenStats() {
+        const stats = {
+            total: Object.keys(this.resetTokens).length,
+            active: 0,
+            expired: 0,
+            used: 0
+        };
+
+        const now = new Date();
+        for (const token in this.resetTokens) {
+            const tokenData = this.resetTokens[token];
+            if (tokenData.used) {
+                stats.used++;
+            } else if (new Date(tokenData.expiry) < now) {
+                stats.expired++;
+            } else {
+                stats.active++;
+            }
+        }
+
+        return stats;
+    }
 }
 
 // Initialize auth guard when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.authGuard = new AuthGuard();
-    console.log('🛡️ Auth Guard initialized');
+    console.log('🛡️ Enhanced Auth Guard with Password Reset initialized');
 });
 
 // Handle redirect after login
@@ -350,10 +491,18 @@ window.addEventListener('load', () => {
                 return result;
             };
         }
+
+        // Enhance password reset functionality if available
+        const originalHandleForgotPassword = window.authSystem.handleForgotPassword;
+        if (originalHandleForgotPassword) {
+            window.authSystem.handleForgotPassword = async function(e) {
+                return await originalHandleForgotPassword.call(this, e);
+            };
+        }
     }
 });
 
-console.log('🛡️ Enhanced Auth Guard with User Data Integration loaded');
+console.log('🛡️ Enhanced Auth Guard with User Data Integration and Password Reset loaded');
 
 // Debug function to check current user and data
 window.debugAuth = function() {
@@ -369,4 +518,39 @@ window.debugAuth = function() {
     if (window.userDataManager) {
         console.log('User Data Stats:', window.userDataManager.getStorageStats());
     }
+
+    if (window.authGuard?.passwordReset) {
+        console.log('Password Reset Stats:', window.authGuard.passwordReset.getTokenStats());
+    }
+};
+
+// Debug function for password reset tokens
+window.debugPasswordReset = function() {
+    console.log('=== PASSWORD RESET DEBUG ===');
+    if (window.authGuard?.passwordReset) {
+        console.log('Token Stats:', window.authGuard.passwordReset.getTokenStats());
+        console.log('All Tokens:', window.authGuard.passwordReset.resetTokens);
+    } else {
+        console.log('Password reset manager not available');
+    }
+};
+
+// Utility function to manually create a reset token (for testing)
+window.createTestResetToken = function(email = 'demo@example.com') {
+    if (window.authGuard?.passwordReset) {
+        const token = window.authGuard.passwordReset.createResetToken(email);
+        const resetUrl = `${window.location.origin}${window.location.pathname.replace(/[^\/]*$/, 'index.html')}?reset=${token}`;
+        console.log(`🔗 Test reset URL for ${email}:`, resetUrl);
+        return { token, url: resetUrl };
+    }
+    return null;
+};
+
+// Utility function to clean up all reset tokens (for testing)
+window.clearAllResetTokens = function() {
+    localStorage.removeItem('resetTokens');
+    if (window.authGuard?.passwordReset) {
+        window.authGuard.passwordReset.resetTokens = {};
+    }
+    console.log('🧹 All reset tokens cleared');
 };

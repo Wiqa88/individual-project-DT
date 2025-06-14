@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Task Manager - Welcome</title>
+  <title>EmailJS Password Reset - Updated Implementation</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* Your existing CSS styles stay exactly the same */
+    /* Keep all your existing CSS styles exactly the same */
     * {
       margin: 0;
       padding: 0;
@@ -288,6 +288,24 @@
       text-decoration: underline;
     }
 
+    .back-to-login {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .back-to-login a {
+      color: #1e3a8a;
+      text-decoration: none;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .back-to-login a:hover {
+      text-decoration: underline;
+    }
+
     .success-message {
       text-align: center;
       padding: 40px;
@@ -363,6 +381,22 @@
       background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
     }
 
+    .info-box {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+      color: #0369a1;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .info-box i {
+      margin-right: 8px;
+      color: #0284c7;
+    }
+
     /* Responsive Design */
     @media (max-width: 768px) {
       .auth-container {
@@ -402,33 +436,33 @@
       </div>
       <h1 class="welcome-title">Task Manager Pro</h1>
       <p class="welcome-subtitle">
-        The complete productivity solution for managing your tasks, habits, and time.
+        The complete productivity solution with EmailJS-powered password reset.
       </p>
 
       <div class="features-list">
         <div class="feature-item">
-          <i class="fas fa-check"></i>
-          <span>Smart task organization</span>
+          <i class="fas fa-envelope"></i>
+          <span>Real email notifications</span>
         </div>
         <div class="feature-item">
-          <i class="fas fa-calendar"></i>
-          <span>Integrated calendar & scheduling</span>
+          <i class="fas fa-shield-alt"></i>
+          <span>Secure password reset</span>
         </div>
         <div class="feature-item">
           <i class="fas fa-clock"></i>
-          <span>Pomodoro timer</span>
+          <span>1-hour token expiry</span>
         </div>
         <div class="feature-item">
-          <i class="fas fa-chart-line"></i>
-          <span>Habit tracking</span>
-        </div>
-        <div class="feature-item">
-          <i class="fas fa-th-large"></i>
-          <span>Eisenhower Matrix</span>
+          <i class="fas fa-user-shield"></i>
+          <span>User data isolation</span>
         </div>
         <div class="feature-item">
           <i class="fas fa-sync"></i>
           <span>Cross-device sync</span>
+        </div>
+        <div class="feature-item">
+          <i class="fas fa-mobile-alt"></i>
+          <span>Mobile responsive</span>
         </div>
       </div>
     </div>
@@ -442,7 +476,7 @@
         <p id="formSubtitle">Sign in to continue your productivity journey</p>
       </div>
 
-      <div class="form-tabs">
+      <div class="form-tabs" id="formTabs">
         <button class="tab-btn active" id="loginTab">Sign In</button>
         <button class="tab-btn" id="signupTab">Sign Up</button>
       </div>
@@ -538,6 +572,77 @@
             </button>
           </form>
         </div>
+
+        <!-- Forgot Password Form -->
+        <div class="form-panel" id="forgotPasswordPanel">
+          <div class="info-box">
+            <i class="fas fa-info-circle"></i>
+            Enter your email and we'll send you a secure reset link using EmailJS.
+          </div>
+
+          <form id="forgotPasswordForm">
+            <div class="input-group">
+              <label for="forgotEmail">Email Address</label>
+              <div class="input-wrapper">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="forgotEmail" class="form-input" placeholder="Enter your email" required>
+              </div>
+              <div class="error-message" id="forgotEmailError"></div>
+            </div>
+
+            <button type="submit" class="submit-btn" id="forgotBtn">
+              <span class="btn-text">Send Reset Link</span>
+              <div class="spinner"></div>
+            </button>
+          </form>
+
+          <div class="back-to-login">
+            <a href="#" id="backToLoginLink">
+              <i class="fas fa-arrow-left"></i>
+              Back to Sign In
+            </a>
+          </div>
+        </div>
+
+        <!-- Reset Password Form -->
+        <div class="form-panel" id="resetPasswordPanel">
+          <div class="info-box">
+            <i class="fas fa-shield-alt"></i>
+            Create a new password for your account. Make sure it's strong and secure.
+          </div>
+
+          <form id="resetPasswordForm">
+            <div class="input-group">
+              <label for="newPassword">New Password</label>
+              <div class="input-wrapper">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="newPassword" class="form-input" placeholder="Create a new password" required>
+              </div>
+              <div class="error-message" id="newPasswordError"></div>
+            </div>
+
+            <div class="input-group">
+              <label for="confirmNewPassword">Confirm New Password</label>
+              <div class="input-wrapper">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="confirmNewPassword" class="form-input" placeholder="Confirm your new password" required>
+              </div>
+              <div class="error-message" id="confirmNewPasswordError"></div>
+            </div>
+
+            <button type="submit" class="submit-btn" id="resetBtn">
+              <span class="btn-text">Reset Password</span>
+              <div class="spinner"></div>
+            </button>
+          </form>
+
+          <div class="back-to-login">
+            <a href="#" id="backToLoginFromResetLink">
+              <i class="fas fa-arrow-left"></i>
+              Back to Sign In
+            </a>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -550,21 +655,202 @@
       <p class="success-text">Your account has been created successfully. Let's get you started on your productivity journey.</p>
       <button class="continue-btn" id="continueBtn">Continue to Dashboard</button>
     </div>
+
+    <!-- Password Reset Success Message -->
+    <div class="success-message" id="resetSuccessMessage">
+      <div class="success-icon">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <h3 class="success-title">Password Reset Successful!</h3>
+      <p class="success-text">Your password has been updated successfully. You can now sign in with your new password.</p>
+      <button class="continue-btn" id="continueToLoginBtn">Continue to Sign In</button>
+    </div>
   </div>
 </div>
 
+<!-- Load EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
 <script>
-  // FIXED Authentication System - This replaces your existing auth code
-  class FixedAuthSystem {
+  // STEP 1: EmailJS Configuration - YOUR ACTUAL CREDENTIALS
+  const EMAILJS_CONFIG = {
+    publicKey: 'uMixcUe9ZP9K1YB6l',      // Your EmailJS Public Key
+    serviceId: 'service_tkzvmsl',        // Your EmailJS Service ID (UPDATED)
+    templateId: 'template_7tvfwdy'       // Your EmailJS Template ID (UPDATED)
+  };
+
+  // STEP 2: EmailJS Service Class
+  class EmailJSPasswordReset {
+    constructor() {
+      this.resetTokens = JSON.parse(localStorage.getItem('resetTokens') || '{}');
+      this.init();
+    }
+
+    async init() {
+      try {
+        // Initialize EmailJS
+        emailjs.init(EMAILJS_CONFIG.publicKey);
+        console.log('📧 EmailJS initialized successfully');
+      } catch (error) {
+        console.error('❌ EmailJS initialization failed:', error);
+      }
+
+      this.cleanupExpiredTokens();
+    }
+
+    // Generate secure token
+    generateResetToken() {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let token = '';
+      for (let i = 0; i < 32; i++) {
+        token += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return token;
+    }
+
+    // Create reset token for user
+    createResetToken(email) {
+      const token = this.generateResetToken();
+      const expiry = new Date();
+      expiry.setHours(expiry.getHours() + 1); // Token expires in 1 hour
+
+      this.resetTokens[token] = {
+        email: email,
+        expiry: expiry.toISOString(),
+        used: false,
+        createdAt: new Date().toISOString()
+      };
+
+      localStorage.setItem('resetTokens', JSON.stringify(this.resetTokens));
+      return token;
+    }
+
+    // STEP 3: Send password reset email using EmailJS
+    async sendPasswordResetEmail(email, token) {
+      try {
+        console.log(`📧 Sending password reset email to: ${email}`);
+
+        // Get user name
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        const user = users.find(u => u.email === email);
+        const userName = user ? user.name : email.split('@')[0];
+
+        // Create reset URL
+        const resetUrl = `${window.location.origin}${window.location.pathname}?reset=${token}`;
+
+        // Template parameters that match your EmailJS template
+        const templateParams = {
+          to_email: email,
+          to_name: userName,
+          reset_url: resetUrl,
+          expiry_time: '1 hour',
+          app_name: 'Task Manager Pro',
+          support_email: 'support@taskmanagerpro.com'
+        };
+
+        console.log('📨 Sending email with parameters:', templateParams);
+
+        // Send email using EmailJS
+        const result = await emailjs.send(
+                EMAILJS_CONFIG.serviceId,
+                EMAILJS_CONFIG.templateId,
+                templateParams,
+                { publicKey: EMAILJS_CONFIG.publicKey }
+        );
+
+        console.log('✅ Email sent successfully:', result);
+
+        return {
+          success: true,
+          message: 'Password reset email sent successfully',
+          messageId: result.text
+        };
+
+      } catch (error) {
+        console.error('❌ EmailJS send failed:', error);
+
+        // Handle specific EmailJS errors
+        let errorMessage = 'Failed to send reset email';
+
+        if (error.status === 412) {
+          errorMessage = 'Email service needs reconnection. Please try again later.';
+        } else if (error.status === 403) {
+          errorMessage = 'Email service temporarily unavailable. Please try again.';
+        } else if (error.status === 429) {
+          errorMessage = 'Too many requests. Please wait before trying again.';
+        }
+
+        return {
+          success: false,
+          error: error.text || error.message,
+          message: errorMessage
+        };
+      }
+    }
+
+    // Validate reset token
+    validateResetToken(token) {
+      const tokenData = this.resetTokens[token];
+
+      if (!tokenData) {
+        return { valid: false, error: 'Invalid reset token' };
+      }
+
+      if (tokenData.used) {
+        return { valid: false, error: 'Reset token has already been used' };
+      }
+
+      if (new Date() > new Date(tokenData.expiry)) {
+        return { valid: false, error: 'Reset token has expired' };
+      }
+
+      return { valid: true, email: tokenData.email };
+    }
+
+    // Mark token as used
+    markTokenAsUsed(token) {
+      if (this.resetTokens[token]) {
+        this.resetTokens[token].used = true;
+        this.resetTokens[token].usedAt = new Date().toISOString();
+        localStorage.setItem('resetTokens', JSON.stringify(this.resetTokens));
+      }
+    }
+
+    // Clean up expired tokens
+    cleanupExpiredTokens() {
+      const now = new Date();
+      let cleaned = false;
+
+      for (const token in this.resetTokens) {
+        if (new Date(this.resetTokens[token].expiry) < now) {
+          delete this.resetTokens[token];
+          cleaned = true;
+        }
+      }
+
+      if (cleaned) {
+        localStorage.setItem('resetTokens', JSON.stringify(this.resetTokens));
+      }
+    }
+
+    delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+  }
+
+  // STEP 4: Enhanced Authentication System with EmailJS
+  class AuthSystemWithEmailJS {
     constructor() {
       this.users = JSON.parse(localStorage.getItem('users') || '[]');
       this.currentUser = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+      this.passwordReset = new EmailJSPasswordReset();
       this.init();
     }
 
     init() {
       this.setupEventListeners();
       this.checkAuthState();
+      this.checkResetToken();
     }
 
     setupEventListeners() {
@@ -575,17 +861,222 @@
       // Form submissions
       document.getElementById('loginForm').addEventListener('submit', (e) => this.handleLogin(e));
       document.getElementById('signupForm').addEventListener('submit', (e) => this.handleSignup(e));
+      document.getElementById('forgotPasswordForm').addEventListener('submit', (e) => this.handleForgotPassword(e));
+      document.getElementById('resetPasswordForm').addEventListener('submit', (e) => this.handlePasswordReset(e));
 
-      // Continue button
+      // Continue buttons
       document.getElementById('continueBtn').addEventListener('click', () => this.redirectToDashboard());
+      document.getElementById('continueToLoginBtn').addEventListener('click', () => this.showLoginForm());
 
-      // Forgot password
+      // Navigation links
       document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
         e.preventDefault();
-        this.handleForgotPassword();
+        this.showForgotPasswordForm();
+      });
+
+      document.getElementById('backToLoginLink').addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showLoginForm();
+      });
+
+      document.getElementById('backToLoginFromResetLink').addEventListener('click', (e) => {
+        e.preventDefault();
+        this.showLoginForm();
       });
     }
 
+    // Check for reset token in URL
+    checkResetToken() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const resetToken = urlParams.get('reset');
+
+      if (resetToken) {
+        this.handleResetTokenFromURL(resetToken);
+      }
+    }
+
+    // Handle reset token from URL
+    handleResetTokenFromURL(token) {
+      const validation = this.passwordReset.validateResetToken(token);
+
+      if (validation.valid) {
+        this.showResetPasswordForm(token, validation.email);
+        this.showNotification('Please enter your new password', 'success');
+      } else {
+        this.showNotification(validation.error, 'error');
+        this.showLoginForm();
+      }
+
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // STEP 5: Handle forgot password with EmailJS
+    async handleForgotPassword(e) {
+      e.preventDefault();
+      this.clearErrors();
+
+      const email = document.getElementById('forgotEmail').value.trim();
+
+      if (!this.validateEmail('forgot')) {
+        return;
+      }
+
+      // Check if user exists
+      const user = this.users.find(u => u.email === email);
+      if (!user) {
+        this.showError('forgotEmailError', 'No account found with this email address');
+        return;
+      }
+
+      this.setLoading('forgotBtn', true);
+
+      try {
+        // Generate reset token
+        const resetToken = this.passwordReset.createResetToken(email);
+
+        // Send reset email using EmailJS
+        const result = await this.passwordReset.sendPasswordResetEmail(email, resetToken);
+
+        if (result.success) {
+          this.setLoading('forgotBtn', false);
+          this.showNotification('Password reset email sent! Check your inbox.', 'success');
+
+          // For demo/testing: show reset link in console
+          const resetUrl = `${window.location.origin}${window.location.pathname}?reset=${resetToken}`;
+          console.log(`🔗 Reset link for testing: ${resetUrl}`);
+
+          // Go back to login form after delay
+          setTimeout(() => {
+            this.showLoginForm();
+          }, 3000);
+        } else {
+          this.setLoading('forgotBtn', false);
+          this.showNotification(result.message, 'error');
+        }
+      } catch (error) {
+        this.setLoading('forgotBtn', false);
+        this.showNotification('Failed to send reset email. Please try again.', 'error');
+        console.error('Password reset error:', error);
+      }
+    }
+
+    // Handle password reset form submission
+    async handlePasswordReset(e) {
+      e.preventDefault();
+      this.clearErrors();
+
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+      const resetToken = document.getElementById('resetPasswordForm').dataset.token;
+      const userEmail = document.getElementById('resetPasswordForm').dataset.email;
+
+      // Validation
+      let hasErrors = false;
+
+      if (!this.isPasswordStrong(newPassword)) {
+        this.showError('newPasswordError', 'Password must be at least 8 characters with uppercase, lowercase, number and special character');
+        hasErrors = true;
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        this.showError('confirmNewPasswordError', 'Passwords do not match');
+        hasErrors = true;
+      }
+
+      if (hasErrors) return;
+
+      this.setLoading('resetBtn', true);
+
+      // Simulate API call
+      await this.delay(1500);
+
+      // Validate token again
+      const validation = this.passwordReset.validateResetToken(resetToken);
+      if (!validation.valid) {
+        this.setLoading('resetBtn', false);
+        this.showNotification(validation.error, 'error');
+        this.showLoginForm();
+        return;
+      }
+
+      // Update user password
+      const userIndex = this.users.findIndex(u => u.email === userEmail);
+      if (userIndex !== -1) {
+        this.users[userIndex].password = newPassword;
+        localStorage.setItem('users', JSON.stringify(this.users));
+
+        // Mark token as used
+        this.passwordReset.markTokenAsUsed(resetToken);
+
+        this.setLoading('resetBtn', false);
+
+        // Show success message
+        this.showResetSuccessMessage();
+      } else {
+        this.setLoading('resetBtn', false);
+        this.showNotification('User not found. Please try again.', 'error');
+      }
+    }
+
+    // Show different form panels
+    showLoginForm() {
+      this.hideAllPanels();
+      document.getElementById('loginPanel').classList.add('active');
+      document.getElementById('formTabs').style.display = 'flex';
+      document.getElementById('loginTab').classList.add('active');
+      document.getElementById('signupTab').classList.remove('active');
+      document.getElementById('formTitle').textContent = 'Welcome Back';
+      document.getElementById('formSubtitle').textContent = 'Sign in to continue your productivity journey';
+      this.clearErrors();
+    }
+
+    showForgotPasswordForm() {
+      this.hideAllPanels();
+      document.getElementById('forgotPasswordPanel').classList.add('active');
+      document.getElementById('formTabs').style.display = 'none';
+      document.getElementById('formTitle').textContent = 'Reset Password';
+      document.getElementById('formSubtitle').textContent = 'Enter your email to receive a reset link';
+      this.clearErrors();
+    }
+
+    showResetPasswordForm(token, email) {
+      this.hideAllPanels();
+      document.getElementById('resetPasswordPanel').classList.add('active');
+      document.getElementById('formTabs').style.display = 'none';
+      document.getElementById('formTitle').textContent = 'Create New Password';
+      document.getElementById('formSubtitle').textContent = 'Enter your new password below';
+
+      // Store token and email for form submission
+      const form = document.getElementById('resetPasswordForm');
+      form.dataset.token = token;
+      form.dataset.email = email;
+
+      this.clearErrors();
+    }
+
+    showResetSuccessMessage() {
+      const authForm = document.querySelector('.auth-form');
+      const resetSuccessMessage = document.getElementById('resetSuccessMessage');
+
+      authForm.style.display = 'none';
+      resetSuccessMessage.classList.add('show');
+    }
+
+    hideAllPanels() {
+      const panels = document.querySelectorAll('.form-panel');
+      panels.forEach(panel => panel.classList.remove('active'));
+
+      const successMessages = document.querySelectorAll('.success-message');
+      successMessages.forEach(msg => {
+        msg.classList.remove('show');
+        msg.style.display = 'none';
+      });
+
+      document.querySelector('.auth-form').style.display = 'block';
+    }
+
+    // Keep all your existing authentication methods
     async handleLogin(e) {
       e.preventDefault();
       this.clearErrors();
@@ -600,11 +1091,8 @@
       }
 
       this.setLoading('loginBtn', true);
-
-      // Simulate API call
       await this.delay(1500);
 
-      // Find user
       const user = this.users.find(u => u.email === email && u.password === password);
 
       if (!user) {
@@ -614,11 +1102,9 @@
         return;
       }
 
-      // Success - Set up user session WITHOUT clearing their data
       this.currentUser = { ...user };
-      delete this.currentUser.password; // Don't store password in session
+      delete this.currentUser.password;
 
-      // Store session info
       sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
       sessionStorage.setItem('isAuthenticated', 'true');
       sessionStorage.setItem('loginTime', new Date().toISOString());
@@ -631,9 +1117,6 @@
 
       this.setLoading('loginBtn', false);
       this.showNotification(`Welcome back, ${user.name}!`, 'success');
-
-      // IMPORTANT: Don't clear user data here
-      console.log(`🔐 User ${user.email} logged in successfully`);
 
       await this.delay(1000);
       this.redirectToDashboard();
@@ -649,7 +1132,6 @@
       const confirmPassword = document.getElementById('confirmPassword').value;
       const agreeTerms = document.getElementById('agreeTerms').checked;
 
-      // Validation
       let hasErrors = false;
 
       if (!name || name.length < 2) {
@@ -678,7 +1160,6 @@
 
       if (hasErrors) return;
 
-      // Check if user already exists
       if (this.users.find(u => u.email === email)) {
         this.showError('signupEmailError', 'An account with this email already exists');
         this.showNotification('Email already registered. Try signing in instead.', 'error');
@@ -686,11 +1167,8 @@
       }
 
       this.setLoading('signupBtn', true);
-
-      // Simulate API call
       await this.delay(2000);
 
-      // Create user
       const newUser = {
         id: Date.now(),
         name,
@@ -710,14 +1188,11 @@
       this.currentUser = { ...newUser };
       delete this.currentUser.password;
 
-      // Store session info
       sessionStorage.setItem('currentUser', JSON.stringify(this.currentUser));
       sessionStorage.setItem('isAuthenticated', 'true');
       sessionStorage.setItem('loginTime', new Date().toISOString());
 
       this.setLoading('signupBtn', false);
-
-      // Show success state
       this.showSuccess();
     }
 
@@ -798,23 +1273,20 @@
     }
 
     showNotification(message, type = 'success') {
-      // Remove existing notifications
       const existingNotifications = document.querySelectorAll('.notification');
       existingNotifications.forEach(n => n.remove());
 
       const notification = document.createElement('div');
       notification.className = `notification ${type}`;
       notification.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i>
-        <span>${message}</span>
-      `;
+            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i>
+            <span>${message}</span>
+        `;
 
       document.body.appendChild(notification);
 
-      // Show notification
       setTimeout(() => notification.classList.add('show'), 100);
 
-      // Hide notification after 4 seconds
       setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => notification.remove(), 300);
@@ -828,6 +1300,8 @@
       const signupPanel = document.getElementById('signupPanel');
       const formTitle = document.getElementById('formTitle');
       const formSubtitle = document.getElementById('formSubtitle');
+
+      document.getElementById('formTabs').style.display = 'flex';
 
       if (tab === 'login') {
         loginTab.classList.add('active');
@@ -849,13 +1323,11 @@
     }
 
     checkAuthState() {
-      // Auto-fill remembered email
       const rememberedUser = localStorage.getItem('rememberedUser');
       if (rememberedUser) {
         document.getElementById('loginEmail').value = rememberedUser;
       }
 
-      // Check if user is already logged in
       if (this.currentUser) {
         this.showNotification(`Welcome back, ${this.currentUser.name}!`, 'success');
         setTimeout(() => this.redirectToDashboard(), 2000);
@@ -863,23 +1335,9 @@
     }
 
     redirectToDashboard() {
-      // Store user session
       sessionStorage.setItem('isAuthenticated', 'true');
       sessionStorage.setItem('loginTime', new Date().toISOString());
-
-      // Redirect to todo.html (main dashboard)
       window.location.href = 'todo.html';
-    }
-
-    handleForgotPassword() {
-      const email = prompt('Please enter your email address:');
-      if (email) {
-        if (this.users.find(u => u.email === email)) {
-          this.showNotification('Password reset link sent to your email!', 'success');
-        } else {
-          this.showNotification('No account found with this email address.', 'error');
-        }
-      }
     }
 
     delay(ms) {
@@ -891,10 +1349,8 @@
     }
   }
 
-  // Initialize authentication system
-  const auth = new FixedAuthSystem();
-
-  // Make auth system globally available for other pages
+  // STEP 6: Initialize the system
+  const auth = new AuthSystemWithEmailJS();
   window.authSystem = auth;
 
   // Create demo users if none exist
@@ -928,10 +1384,128 @@
     localStorage.setItem('users', JSON.stringify(demoUsers));
   }
 
-  console.log('🔐 Fixed Authentication System loaded');
+  // STEP 7: Testing functions
+  window.testEmailJS = async function(testEmail) {
+    console.log('🧪 Testing EmailJS integration...');
+
+    // Use provided email or prompt for one
+    const email = testEmail || prompt('Enter your email address for testing:');
+
+    if (!email) {
+      console.error('❌ No email provided');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      console.error('❌ Invalid email format');
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      const testParams = {
+        to_email: email,
+        to_name: email.split('@')[0], // Use part before @ as name
+        reset_url: `${window.location.origin}${window.location.pathname}?reset=test123456789`,
+        expiry_time: '1 hour',
+        app_name: 'Task Manager Pro',
+        support_email: 'support@taskmanagerpro.com'
+      };
+
+      console.log('📨 Sending test email to:', email);
+      console.log('📋 Template parameters:', testParams);
+
+      const result = await emailjs.send(
+              EMAILJS_CONFIG.serviceId,
+              EMAILJS_CONFIG.templateId,
+              testParams,
+              { publicKey: EMAILJS_CONFIG.publicKey }
+      );
+
+      console.log('✅ Test email sent successfully:', result);
+      alert(`✅ Test email sent to ${email}! Check your inbox (and spam folder).`);
+
+      return result;
+    } catch (error) {
+      console.error('❌ Test failed:', error);
+
+      // Provide specific error messages
+      let errorMessage = 'Unknown error occurred';
+
+      if (error.status === 412) {
+        errorMessage = 'EmailJS service needs reconnection. Please reconnect your email service in the EmailJS dashboard.';
+      } else if (error.status === 403) {
+        errorMessage = 'Access denied. Check your EmailJS credentials and service configuration.';
+      } else if (error.status === 400) {
+        errorMessage = 'Bad request. Check your template variables and email address format.';
+      } else if (error.text) {
+        errorMessage = error.text;
+      }
+
+      alert(`❌ Test failed: ${errorMessage}`);
+
+      // Show debugging info
+      console.log('🔍 Debug info:');
+      console.log('Public Key:', EMAILJS_CONFIG.publicKey);
+      console.log('Service ID:', EMAILJS_CONFIG.serviceId);
+      console.log('Template ID:', EMAILJS_CONFIG.templateId);
+      console.log('Error details:', error);
+
+      return false;
+    }
+  };
+
+  window.createTestResetLink = function(email = 'demo@example.com') {
+    if (auth.passwordReset) {
+      const token = auth.passwordReset.createResetToken(email);
+      const resetUrl = `${window.location.origin}${window.location.pathname}?reset=${token}`;
+      console.log(`🔗 Test reset URL: ${resetUrl}`);
+      alert(`Test reset link created! Check console for URL.`);
+      return resetUrl;
+    }
+  };
+
+  // NEW: Simple test with your actual email
+  window.testWithYourEmail = async function() {
+    const email = prompt('Enter YOUR email address to test:');
+    if (email) {
+      return await window.testEmailJS(email);
+    }
+  };
+
+  // NEW: Debug EmailJS configuration
+  window.debugEmailJS = function() {
+    console.log('🔍 EmailJS Configuration Debug:');
+    console.log('Public Key:', EMAILJS_CONFIG.publicKey);
+    console.log('Service ID:', EMAILJS_CONFIG.serviceId);
+    console.log('Template ID:', EMAILJS_CONFIG.templateId);
+    console.log('EmailJS loaded:', typeof emailjs !== 'undefined');
+    console.log('EmailJS version:', emailjs?.version || 'Unknown');
+
+    // Test basic EmailJS initialization
+    try {
+      emailjs.init(EMAILJS_CONFIG.publicKey);
+      console.log('✅ EmailJS initialization successful');
+    } catch (error) {
+      console.error('❌ EmailJS initialization failed:', error);
+    }
+  };
+
+  console.log('🔐 EmailJS Password Reset System loaded');
   console.log('📧 Demo Accounts Available:');
   console.log('  - demo@example.com / Demo123!');
   console.log('  - jane@example.com / Jane123!');
+  console.log('');
+  console.log('🛠️ Setup Instructions:');
+  console.log('1. Go to https://www.emailjs.com/ and create account');
+  console.log('2. Add email service (Gmail, Outlook, etc.)');
+  console.log('3. Create email template');
+  console.log('4. Update EMAILJS_CONFIG object above with your credentials');
+  console.log('5. Test with: window.testEmailJS()');
+  console.log('');
+  console.log('🔗 Create test reset link: window.createTestResetLink("your-email@example.com")');
 </script>
 </body>
 </html>
