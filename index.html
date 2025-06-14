@@ -735,8 +735,18 @@
         const user = users.find(u => u.email === email);
         const userName = user ? user.name : email.split('@')[0];
 
-        // Create reset URL
-        const resetUrl = `${window.location.origin}${window.location.pathname}?reset=${token}`;
+        // Create clean reset URL - Remove IntelliJ dev server parameters
+        let resetUrl;
+        if (window.location.protocol === 'file:') {
+          // For local files, use the full file path
+          const currentUrl = window.location.href.split('?')[0].split('#')[0];
+          resetUrl = `${currentUrl}?reset=${token}`;
+        } else {
+          // For web servers - create clean URL without dev server parameters
+          const cleanOrigin = window.location.origin;
+          const cleanPath = window.location.pathname;
+          resetUrl = `${cleanOrigin}${cleanPath}?reset=${token}`;
+        }
 
         // Template parameters that match your EmailJS template
         const templateParams = {
@@ -749,6 +759,7 @@
         };
 
         console.log('📨 Sending email with parameters:', templateParams);
+        console.log('🔗 Clean Reset URL will be:', resetUrl);
 
         // Send email using EmailJS
         const result = await emailjs.send(
@@ -890,24 +901,38 @@
       const urlParams = new URLSearchParams(window.location.search);
       const resetToken = urlParams.get('reset');
 
+      console.log('🔍 Checking for reset token in URL...');
+      console.log('Current URL:', window.location.href);
+      console.log('URL Search params:', window.location.search);
+      console.log('Reset token found:', resetToken);
+
       if (resetToken) {
+        console.log('✅ Reset token detected, processing...');
         this.handleResetTokenFromURL(resetToken);
+      } else {
+        console.log('ℹ️ No reset token in URL');
       }
     }
 
     // Handle reset token from URL
     handleResetTokenFromURL(token) {
+      console.log(`🔄 Processing reset token: ${token}`);
+
       const validation = this.passwordReset.validateResetToken(token);
+      console.log('Token validation result:', validation);
 
       if (validation.valid) {
+        console.log('✅ Token is valid, showing reset form');
         this.showResetPasswordForm(token, validation.email);
         this.showNotification('Please enter your new password', 'success');
       } else {
+        console.log('❌ Token is invalid:', validation.error);
         this.showNotification(validation.error, 'error');
         this.showLoginForm();
       }
 
       // Clean URL
+      console.log('🧹 Cleaning URL parameters');
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
@@ -1408,7 +1433,9 @@
       const testParams = {
         to_email: email,
         to_name: email.split('@')[0], // Use part before @ as name
-        reset_url: `${window.location.origin}${window.location.pathname}?reset=test123456789`,
+        reset_url: window.location.protocol === 'file:'
+                ? `${window.location.href.split('?')[0]}?reset=test123456789`
+                : `${window.location.origin}${window.location.pathname}?reset=test123456789`,
         expiry_time: '1 hour',
         app_name: 'Task Manager Pro',
         support_email: 'support@taskmanagerpro.com'
@@ -1467,12 +1494,59 @@
     }
   };
 
-  // NEW: Simple test with your actual email
-  window.testWithYourEmail = async function() {
-    const email = prompt('Enter YOUR email address to test:');
-    if (email) {
-      return await window.testEmailJS(email);
+  // NEW: Test the current page with a reset token
+  window.testCurrentPageWithResetToken = function() {
+    console.log('🧪 Testing current page with reset token...');
+    console.log('Current URL:', window.location.href);
+    console.log('Protocol:', window.location.protocol);
+    console.log('Host:', window.location.host);
+    console.log('Pathname:', window.location.pathname);
+
+    // Check if page loaded properly
+    console.log('Document ready state:', document.readyState);
+    console.log('Auth system loaded:', typeof auth !== 'undefined');
+    console.log('Password reset system loaded:', auth?.passwordReset ? 'Yes' : 'No');
+
+    // Test URL parsing
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetToken = urlParams.get('reset');
+    console.log('Reset token from URL:', resetToken);
+
+    if (resetToken) {
+      console.log('🔍 Testing token validation...');
+      if (auth?.passwordReset) {
+        const validation = auth.passwordReset.validateResetToken(resetToken);
+        console.log('Token validation result:', validation);
+      } else {
+        console.log('❌ Password reset system not available');
+      }
     }
+
+    return {
+      pageLoaded: document.readyState === 'complete',
+      authSystemLoaded: typeof auth !== 'undefined',
+      passwordResetLoaded: auth?.passwordReset ? true : false,
+      resetToken: resetToken,
+      currentUrl: window.location.href
+    };
+  };
+
+  // NEW: Manual test function for 404 debugging
+  window.testResetURL = function(resetToken) {
+    const testToken = resetToken || 'test123456789';
+
+    // Create the same URL that would be in the email
+    const cleanOrigin = window.location.origin;
+    const cleanPath = window.location.pathname;
+    const testUrl = `${cleanOrigin}${cleanPath}?reset=${testToken}`;
+
+    console.log('🔗 Test URL that would be in email:', testUrl);
+    console.log('📋 To test manually:');
+    console.log('1. Copy this URL:', testUrl);
+    console.log('2. Open it in a new tab');
+    console.log('3. Check if it loads without 404');
+
+    return testUrl;
   };
 
   // NEW: Debug EmailJS configuration
@@ -1483,6 +1557,30 @@
     console.log('Template ID:', EMAILJS_CONFIG.templateId);
     console.log('EmailJS loaded:', typeof emailjs !== 'undefined');
     console.log('EmailJS version:', emailjs?.version || 'Unknown');
+
+    // Show current URL info
+    console.log('🌐 URL Information:');
+    console.log('Protocol:', window.location.protocol);
+    console.log('Current Full URL (with dev params):', window.location.href);
+    console.log('Origin:', window.location.origin);
+    console.log('Pathname:', window.location.pathname);
+
+    // Generate clean reset URL (what will be sent in email)
+    const testToken = 'test123456789';
+    let resetUrl;
+    if (window.location.protocol === 'file:') {
+      const currentUrl = window.location.href.split('?')[0].split('#')[0];
+      resetUrl = `${currentUrl}?reset=${testToken}`;
+    } else {
+      // Clean URL without IntelliJ dev parameters
+      const cleanOrigin = window.location.origin;
+      const cleanPath = window.location.pathname;
+      resetUrl = `${cleanOrigin}${cleanPath}?reset=${testToken}`;
+    }
+
+    console.log('🔗 CLEAN Reset URL (what goes in email):', resetUrl);
+    console.log('');
+    console.log('📧 The email will contain the CLEAN URL, not the messy one with _ijt parameters');
 
     // Test basic EmailJS initialization
     try {
