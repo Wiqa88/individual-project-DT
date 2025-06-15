@@ -996,6 +996,10 @@
       const resetToken = document.getElementById('resetPasswordForm').dataset.token;
       const userEmail = document.getElementById('resetPasswordForm').dataset.email;
 
+      console.log('🔐 Processing password reset...');
+      console.log('Token:', resetToken);
+      console.log('Email:', userEmail);
+
       // Validation
       let hasErrors = false;
 
@@ -1028,6 +1032,8 @@
       // Update user password
       const userIndex = this.users.findIndex(u => u.email === userEmail);
       if (userIndex !== -1) {
+        console.log('✅ Updating password for user:', userEmail);
+
         this.users[userIndex].password = newPassword;
         localStorage.setItem('users', JSON.stringify(this.users));
 
@@ -1036,11 +1042,18 @@
 
         this.setLoading('resetBtn', false);
 
+        console.log('🎉 Password reset successful!');
+
         // Show success message
         this.showResetSuccessMessage();
+
+        // Also show notification
+        this.showNotification('Password reset successful! You can now sign in with your new password.', 'success');
+
       } else {
         this.setLoading('resetBtn', false);
         this.showNotification('User not found. Please try again.', 'error');
+        console.error('❌ User not found for email:', userEmail);
       }
     }
 
@@ -1066,26 +1079,57 @@
     }
 
     showResetPasswordForm(token, email) {
+      console.log('🔄 Showing reset password form');
+      console.log('Token:', token);
+      console.log('Email:', email);
+
       this.hideAllPanels();
-      document.getElementById('resetPasswordPanel').classList.add('active');
+
+      const resetPanel = document.getElementById('resetPasswordPanel');
+      if (resetPanel) {
+        resetPanel.classList.add('active');
+        console.log('✅ Reset password panel activated');
+      }
+
       document.getElementById('formTabs').style.display = 'none';
       document.getElementById('formTitle').textContent = 'Create New Password';
       document.getElementById('formSubtitle').textContent = 'Enter your new password below';
 
       // Store token and email for form submission
       const form = document.getElementById('resetPasswordForm');
-      form.dataset.token = token;
-      form.dataset.email = email;
+      if (form) {
+        form.dataset.token = token;
+        form.dataset.email = email;
+        console.log('✅ Token and email stored in form dataset');
+        console.log('Form token:', form.dataset.token);
+        console.log('Form email:', form.dataset.email);
+      } else {
+        console.error('❌ Reset password form not found');
+      }
 
       this.clearErrors();
     }
 
     showResetSuccessMessage() {
+      console.log('🎉 Showing reset success message');
+
       const authForm = document.querySelector('.auth-form');
       const resetSuccessMessage = document.getElementById('resetSuccessMessage');
 
-      authForm.style.display = 'none';
-      resetSuccessMessage.classList.add('show');
+      // Hide the form
+      if (authForm) {
+        authForm.style.display = 'none';
+        console.log('✅ Auth form hidden');
+      }
+
+      // Show success message
+      if (resetSuccessMessage) {
+        resetSuccessMessage.classList.add('show');
+        resetSuccessMessage.style.display = 'block';
+        console.log('✅ Reset success message displayed');
+      } else {
+        console.error('❌ Reset success message element not found');
+      }
     }
 
     hideAllPanels() {
