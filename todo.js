@@ -335,6 +335,7 @@ document.addEventListener("DOMContentLoaded", function() {
         taskDescription.style.height = 'auto';
     }
 
+    // Fixed renderTasks function with correct priority order
     function renderTasks() {
         console.log(`🎨 Rendering ${tasks.length} tasks...`);
         taskList.innerHTML = '';
@@ -365,8 +366,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 return 1;
             }
 
-            const priorityOrder = {high: 0, medium: 1, low: 2, 'N/A': 3};
-            return priorityOrder[a.priority] - priorityOrder[b.priority];
+            // Fixed priority order - using lowercase keys
+            const priorityOrder = {'high': 0, 'medium': 1, 'low': 2, 'N/A': 3};
+            return (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
         });
 
         sortedTasks.forEach(task => {
@@ -380,12 +382,15 @@ document.addEventListener("DOMContentLoaded", function() {
     function createTaskElement(task) {
         const taskItem = document.createElement("li");
 
+        // Fixed priority colors - using lowercase keys to match stored values
         const priorityColors = {
-            high: '#ff5555',
-            medium: '#ffa500',
-            low: '#1e3a8a',
-            'N/A': '#1e3a8a'
+            'high': '#ff5555',    // Red for high priority
+            'medium': '#ffa500',  // Orange for medium priority
+            'low': '#1e3a8a',     // Blue for low priority
+            'N/A': '#1e3a8a'      // Blue for no priority
         };
+
+        // Use task.priority directly (it's stored in lowercase)
         taskItem.style.borderLeftColor = priorityColors[task.priority] || '#1e3a8a';
 
         if (task.completed) {
@@ -1181,7 +1186,7 @@ document.addEventListener("DOMContentLoaded", function() {
     function normalizeTaskPriority(priority) {
         if (!priority || priority === 'priority') return 'medium';
 
-        // Normalize to lowercase for consistency
+        // Normalize to lowercase for consistency in storage
         const normalized = priority.toLowerCase();
 
         // Ensure it's a valid priority
@@ -1308,23 +1313,30 @@ document.addEventListener("DOMContentLoaded", function() {
 
         const displayText = document.createElement("div");
         displayText.className = "display-text";
-        displayText.textContent = prefix + (value || 'N/A');
+
+        // Display capitalized version but keep lowercase in data
+        if (fieldName === 'priority' && value) {
+            const capitalizedValue = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+            displayText.textContent = prefix + capitalizedValue;
+        } else {
+            displayText.textContent = prefix + (value || 'N/A');
+        }
 
         const selectInput = document.createElement("select");
         selectInput.className = "edit-input";
         selectInput.style.display = "none";
 
         if (fieldName === 'priority') {
-            const capitalizedOptions = [
-                {value: 'Low', text: 'Low'},
-                {value: 'Medium', text: 'Medium'},
-                {value: 'High', text: 'High'}
+            const priorityOptions = [
+                {value: 'low', text: 'Low'},
+                {value: 'medium', text: 'Medium'},
+                {value: 'high', text: 'High'}
             ];
 
-            capitalizedOptions.forEach(opt => {
+            priorityOptions.forEach(opt => {
                 const option = document.createElement("option");
-                option.value = opt.value;
-                option.textContent = opt.text;
+                option.value = opt.value;  // Store lowercase value
+                option.textContent = opt.text;  // Display capitalized text
                 if (value === opt.value) {
                     option.selected = true;
                 }
@@ -1380,7 +1392,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
         return containerDiv;
     }
-
     function saveFieldEdit(fieldName, value, task, displayElement, prefix = '') {
         const originalValue = task[fieldName];
 
@@ -1396,14 +1407,21 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }
 
+        // Normalize priority values to lowercase for storage
+        if (fieldName === 'priority' && value) {
+            value = normalizeTaskPriority(value);
+        }
+
         task[fieldName] = value;
 
+        // Update display text
         if ((fieldName === 'date' || fieldName === 'reminder') && value) {
             const formattedDate = formatDate(value);
             displayElement.textContent = prefix + formattedDate;
         } else if (fieldName === 'priority' && value) {
+            // Display capitalized version
             const capitalizedValue = value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
-            displayElement.textContent = prefix + (capitalizedValue || 'N/A');
+            displayElement.textContent = prefix + capitalizedValue;
         } else {
             displayElement.textContent = prefix + (value || 'N/A');
         }
@@ -1415,19 +1433,21 @@ document.addEventListener("DOMContentLoaded", function() {
             editInput.style.display = "none";
         }
 
+        // Update task border color when priority changes
         if (fieldName === 'priority') {
             const taskElement = displayElement.closest('li');
             if (taskElement) {
                 const priorityColors = {
-                    High: '#ff5555',
-                    Medium: '#ffa500',
-                    Low: '#1e3a8a',
-                    'N/A': '#1e3a8a'
+                    'high': '#ff5555',    // Red for high priority
+                    'medium': '#ffa500',  // Orange for medium priority
+                    'low': '#1e3a8a',     // Blue for low priority
+                    'N/A': '#1e3a8a'      // Blue for no priority
                 };
                 taskElement.style.borderLeftColor = priorityColors[value] || '#1e3a8a';
             }
         }
 
+        // Save changes if value actually changed
         if (originalValue !== value) {
             const taskIndex = tasks.findIndex(t => t.id === task.id);
             if (taskIndex !== -1) {
