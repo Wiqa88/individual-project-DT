@@ -212,13 +212,23 @@ document.addEventListener("DOMContentLoaded", function() {
             description: taskDescription.value.trim(),
             date: dueDate.value || null,
             reminder: reminder.value || null,
-            priority: priority.value !== 'priority' ? priority.value : 'medium',
+            priority: normalizeTaskPriority(priority.value), // Use the normalizer
             list: listSelect.value !== 'default' ? listSelect.value : 'N/A',
             completed: false,
             createdAt: new Date().toISOString(),
             subtasks: [],
             userId: window.userDataManager.currentUser.id || window.userDataManager.currentUser.email
         };
+
+        // Debug function to check task priorities
+        function debugTaskPriorities() {
+            console.log("Current task priorities:");
+            tasks.forEach((task, index) => {
+                console.log(`Task ${index}: "${task.title}" - Priority: "${task.priority}" (${typeof task.priority})`);
+            });
+        }
+
+
 
         // Add to tasks array
         tasks.push(newTask);
@@ -989,83 +999,197 @@ document.addEventListener("DOMContentLoaded", function() {
         // Add sorting container to the DOM
         const taskListContainer = document.querySelector(".task-list-container");
         const taskListHeading = taskListContainer.querySelector("h2");
-        const sortingContainer = document.createElement("div");
-        sortingContainer.classList.add("sorting-container");
-        taskListHeading.after(sortingContainer);
+
+        // Check if sorting container already exists
+        let sortingContainer = taskListContainer.querySelector(".sorting-container");
+        if (!sortingContainer) {
+            sortingContainer = document.createElement("div");
+            sortingContainer.classList.add("sorting-container");
+            taskListHeading.after(sortingContainer);
+        }
 
         const sortButton = document.createElement("button");
         sortButton.classList.add("sort-button");
         sortButton.innerHTML = '<i class="fas fa-sort"></i> Sort';
         sortingContainer.appendChild(sortButton);
 
+        // Remove any existing sort menu
+        const existingSortMenu = document.querySelector(".sort-menu");
+        if (existingSortMenu) {
+            existingSortMenu.remove();
+        }
+
         const sortMenu = document.createElement("div");
         sortMenu.classList.add("sort-menu");
         sortMenu.innerHTML = `
-            <div class="sort-option" data-sort="date">Sort by date</div>
-            <div class="sort-option" data-sort="priority">Sort by priority</div>
-            <div class="sort-option" data-sort="list">Sort by list</div>
-        `;
+        <div class="sort-option" data-sort="date">Sort by Date</div>
+        <div class="sort-option" data-sort="priority">Sort by Priority</div>
+        <div class="sort-option" data-sort="list">Sort by List</div>
+    `;
         document.body.appendChild(sortMenu);
 
         sortButton.addEventListener("click", function (e) {
             e.stopPropagation();
             const rect = sortButton.getBoundingClientRect();
-            sortMenu.style.top = `${rect.bottom + window.scrollY}px`;
+            sortMenu.style.top = `${rect.bottom + window.scrollY + 5}px`;
             sortMenu.style.left = `${rect.left + window.scrollX}px`;
             sortMenu.classList.toggle("visible");
         });
 
-        document.addEventListener("click", function () {
-            sortMenu.classList.remove("visible");
+        document.addEventListener("click", function (e) {
+            if (!sortMenu.contains(e.target) && !sortButton.contains(e.target)) {
+                sortMenu.classList.remove("visible");
+            }
         });
 
         sortMenu.addEventListener("click", function (e) {
             e.stopPropagation();
-        });
+            if (e.target.classList.contains("sort-option")) {
+                const sortType = e.target.dataset.sort;
 
-        document.querySelectorAll(".sort-option").forEach(option => {
-            option.addEventListener("click", function () {
-                const sortType = this.dataset.sort;
+                // Update active state
                 document.querySelectorAll(".sort-option").forEach(opt => {
                     opt.classList.remove("active");
                 });
-                this.classList.add("active");
+                e.target.classList.add("active");
+
+                // Perform sort
                 sortTasks(sortType);
                 sortMenu.classList.remove("visible");
-            });
+
+                console.log(`Sorted tasks by: ${sortType}`);
+            }
         });
     }
 
     function sortTasks(sortType) {
-        const taskElements = Array.from(taskList.querySelectorAll("li"));
+        console.log(`Sorting ${tasks.length} tasks by: ${sortType}`);
 
-        taskElements.sort((a, b) => {
-            if (sortType === "date") {
-                const dateA = a.querySelector("[data-field='date'] .display-text").textContent.replace("Date: ", "");
-                const dateB = b.querySelector("[data-field='date'] .display-text").textContent.replace("Date: ", "");
+        // Create a copy of tasks array and sort it
+        let sortedTasks = [...tasks];
 
-                if (dateA === "N/A" && dateB === "N/A") return 0;
-                if (dateA === "N/A") return 1;
-                if (dateB === "N/A") return -1;
+        switch(sortType) {
+            case "date":
+                sortedTasks.sort((a, b) => {
+                    // Handle null/undefined dates
+                    if (!a.date && !b.date) return 0;
+                    if (!a.date) return 1; // Tasks without dates go to the end
+                    if (!b.date) return -1;
 
-                return parseDateString(dateA) - parseDateString(dateB);
-            } else if (sortType === "priority") {
-                const priorityA = a.querySelector("[data-field='priority'] .display-text").textContent.replace("Priority: ", "");
-                const priorityB = b.querySelector("[data-field='priority'] .display-text").textContent.replace("Priority: ", "");
+                    // Convert dates to comparable format
+                    const dateA = convertDateForSorting(a.date);
+                    const dateB = convertDateForSorting(b.date);
 
-                const priorityOrder = {"high": 1, "medium": 2, "low": 3, "N/A": 4};
-                return priorityOrder[priorityA] - priorityOrder[priorityB];
-            } else if (sortType === "list") {
-                const listA = a.querySelector("[data-field='list'] .display-text").textContent.replace("List: ", "");
-                const listB = b.querySelector("[data-field='list'] .display-text").textContent.replace("List: ", "");
-                return listA.localeCompare(listB);
+                    return dateA - dateB;
+                });
+                break;
+
+            case "priority":
+                sortedTasks.sort((a, b) => {
+                    // Define priority order (high = 1, medium = 2, low = 3, null/undefined = 4)
+                    const priorityOrder = {
+                        "high": 1,
+                        "High": 1,
+                        "medium": 2,
+                        "Medium": 2,
+                        "low": 3,
+                        "Low": 3
+                    };
+
+                    const priorityA = priorityOrder[a.priority] || 4;
+                    const priorityB = priorityOrder[b.priority] || 4;
+
+                    console.log(`Comparing priorities: ${a.priority} (${priorityA}) vs ${b.priority} (${priorityB})`);
+
+                    return priorityA - priorityB;
+                });
+                break;
+
+            case "list":
+                sortedTasks.sort((a, b) => {
+                    const listA = a.list || "Z"; // Put tasks without lists at the end
+                    const listB = b.list || "Z";
+                    return listA.localeCompare(listB);
+                });
+                break;
+
+            default:
+                console.log("Unknown sort type:", sortType);
+                return;
+        }
+
+        console.log("Sorted tasks:", sortedTasks.map(t => ({ title: t.title, priority: t.priority, date: t.date })));
+
+        // Re-render tasks in the new order
+        renderSortedTasks(sortedTasks);
+    }
+
+    function renderSortedTasks(sortedTasks) {
+        const taskList = document.getElementById("task-list");
+        taskList.innerHTML = '';
+
+        if (sortedTasks.length === 0) {
+            const emptyMessage = document.createElement('li');
+            emptyMessage.className = 'empty-message';
+            emptyMessage.style.textAlign = 'center';
+            emptyMessage.style.color = '#888';
+            emptyMessage.style.fontStyle = 'italic';
+            emptyMessage.style.padding = '20px';
+            emptyMessage.textContent = 'No tasks yet. Create your first task above!';
+            taskList.appendChild(emptyMessage);
+            return;
+        }
+
+        // Create task elements in the sorted order
+        sortedTasks.forEach(task => {
+            const taskElement = createTaskElement(task);
+            taskList.appendChild(taskElement);
+        });
+
+        console.log(`Rendered ${sortedTasks.length} sorted tasks`);
+    }
+
+    function convertDateForSorting(dateString) {
+        if (!dateString || dateString === 'N/A') {
+            return new Date('9999-12-31'); // Far future date for sorting
+        }
+
+        let date;
+
+        // Handle DD/MM/YYYY format
+        if (dateString.includes('/')) {
+            const parts = dateString.split('/');
+            if (parts.length === 3) {
+                // Convert DD/MM/YYYY to MM/DD/YYYY for Date constructor
+                date = new Date(parts[2], parts[1] - 1, parts[0]);
             }
-            return 0;
-        });
+        }
+        // Handle YYYY-MM-DD format
+        else if (dateString.includes('-')) {
+            date = new Date(dateString);
+        }
+        // Handle other formats
+        else {
+            date = new Date(dateString);
+        }
 
-        taskElements.forEach(task => {
-            taskList.appendChild(task);
-        });
+        // Return timestamp, or far future if invalid
+        return isNaN(date.getTime()) ? new Date('9999-12-31').getTime() : date.getTime();
+    }
+
+// Enhanced addTask function to ensure consistent priority values
+    function normalizeTaskPriority(priority) {
+        if (!priority || priority === 'priority') return 'medium';
+
+        // Normalize to lowercase for consistency
+        const normalized = priority.toLowerCase();
+
+        // Ensure it's a valid priority
+        if (['low', 'medium', 'high'].includes(normalized)) {
+            return normalized;
+        }
+
+        return 'medium'; // Default fallback
     }
 
     // ----------------------
