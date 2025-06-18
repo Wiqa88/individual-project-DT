@@ -611,36 +611,30 @@ document.addEventListener("DOMContentLoaded", function() {
     // ----------------------
     // Navigation and Filtering
     // ----------------------
+
+
+
     function setupNavigationEvents() {
         // Today view
-        document.querySelector(".menu a:nth-child(3)").addEventListener("click", function(e) {
+        document.querySelector(".menu a:nth-child(2)").addEventListener("click", function(e) {
             e.preventDefault();
-            const today = new Date();
-            const todayFormatted = formatDateForComparison(today);
-            filterTasksByDate(todayFormatted, "Today");
+            filterTodayTasks();
         });
 
         // Next 7 Days view
-        document.querySelector(".menu a:nth-child(4)").addEventListener("click", function(e) {
+        document.querySelector(".menu a:nth-child(3)").addEventListener("click", function(e) {
             e.preventDefault();
-            const today = new Date();
-            const next7Days = new Date(today);
-            next7Days.setDate(today.getDate() + 7);
-
-            const todayFormatted = formatDateForComparison(today);
-            const next7DaysFormatted = formatDateForComparison(next7Days);
-
-            filterTasksByDateRange(todayFormatted, next7DaysFormatted, "Next 7 Days");
+            filterNext7DaysTasks();
         });
 
         // Important view
-        document.querySelector(".menu a:nth-child(5)").addEventListener("click", function(e) {
+        document.querySelector(".menu a:nth-child(4)").addEventListener("click", function(e) {
             e.preventDefault();
-            filterTasksByPriority("high", "Important");
+            filterImportantTasks();
         });
 
-        // Inbox view
-        document.querySelector(".menu a:nth-child(6)").addEventListener("click", function(e) {
+        // Inbox view (All tasks)
+        document.querySelector(".menu a:nth-child(5)").addEventListener("click", function(e) {
             e.preventDefault();
             showAllTasks("Inbox");
         });
@@ -652,6 +646,145 @@ document.addEventListener("DOMContentLoaded", function() {
             taskTitle.focus();
         });
     }
+    function filterTodayTasks() {
+        updatePageTitle("Today");
+
+        const today = new Date();
+        const todayString = formatDateForComparison(today);
+
+        console.log('Filtering for today:', todayString);
+
+        let hasVisibleTasks = false;
+
+        tasks.forEach(task => {
+            const taskElement = document.querySelector(`li[data-id="${task.id}"]`);
+            if (!taskElement) return;
+
+            let shouldShow = false;
+
+            if (task.date) {
+                // Convert task date to comparison format
+                let taskDateString;
+
+                if (task.date.includes('/')) {
+                    // Format: DD/MM/YYYY -> YYYY-MM-DD
+                    const parts = task.date.split('/');
+                    if (parts.length === 3) {
+                        taskDateString = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                } else if (task.date.includes('-')) {
+                    // Already in YYYY-MM-DD format
+                    taskDateString = task.date;
+                }
+
+                if (taskDateString === todayString) {
+                    shouldShow = true;
+                }
+            }
+
+            if (shouldShow) {
+                taskElement.style.display = "flex";
+                hasVisibleTasks = true;
+            } else {
+                taskElement.style.display = "none";
+            }
+        });
+
+        if (!hasVisibleTasks) {
+            showNoTasksMessage("Today");
+        } else {
+            removeNoTasksMessage();
+        }
+    }
+
+
+
+    function filterNext7DaysTasks() {
+        updatePageTitle("Next 7 Days");
+
+        const today = new Date();
+        const next7Days = new Date(today);
+        next7Days.setDate(today.getDate() + 7);
+
+        const todayString = formatDateForComparison(today);
+        const next7DaysString = formatDateForComparison(next7Days);
+
+        console.log('Filtering for next 7 days:', todayString, 'to', next7DaysString);
+
+        let hasVisibleTasks = false;
+
+        tasks.forEach(task => {
+            const taskElement = document.querySelector(`li[data-id="${task.id}"]`);
+            if (!taskElement) return;
+
+            let shouldShow = false;
+
+            if (task.date) {
+                // Convert task date to comparison format
+                let taskDateString;
+
+                if (task.date.includes('/')) {
+                    // Format: DD/MM/YYYY -> YYYY-MM-DD
+                    const parts = task.date.split('/');
+                    if (parts.length === 3) {
+                        taskDateString = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                } else if (task.date.includes('-')) {
+                    // Already in YYYY-MM-DD format
+                    taskDateString = task.date;
+                }
+
+                if (taskDateString && taskDateString >= todayString && taskDateString <= next7DaysString) {
+                    shouldShow = true;
+                }
+            }
+
+            if (shouldShow) {
+                taskElement.style.display = "flex";
+                hasVisibleTasks = true;
+            } else {
+                taskElement.style.display = "none";
+            }
+        });
+
+        if (!hasVisibleTasks) {
+            showNoTasksMessage("Next 7 Days");
+        } else {
+            removeNoTasksMessage();
+        }
+    }
+
+
+
+    function filterImportantTasks() {
+        updatePageTitle("Important");
+
+        let hasVisibleTasks = false;
+
+        tasks.forEach(task => {
+            const taskElement = document.querySelector(`li[data-id="${task.id}"]`);
+            if (!taskElement) return;
+
+            // Check if task has high priority (case insensitive)
+            const taskPriority = (task.priority || '').toLowerCase();
+            const shouldShow = taskPriority === 'high';
+
+            if (shouldShow) {
+                taskElement.style.display = "flex";
+                hasVisibleTasks = true;
+            } else {
+                taskElement.style.display = "none";
+            }
+        });
+
+        if (!hasVisibleTasks) {
+            showNoTasksMessage("Important");
+        } else {
+            removeNoTasksMessage();
+        }
+    }
+
+
 
     function filterTasksByDate(dateString, viewTitle) {
         updatePageTitle(viewTitle);
@@ -771,18 +904,31 @@ document.addEventListener("DOMContentLoaded", function() {
     function filterTasksByList(listName) {
         updatePageTitle(listName);
 
-        const taskItems = document.querySelectorAll(".task-item");
+        // Clear active states from all list names
+        document.querySelectorAll('.list-name').forEach(el => {
+            el.classList.remove('active');
+        });
+
+        // Set active state for clicked list
+        document.querySelectorAll('.list-name').forEach(el => {
+            if (el.textContent === listName) {
+                el.classList.add('active');
+            }
+        });
+
         let hasVisibleTasks = false;
 
-        taskItems.forEach(taskItem => {
-            const parentLi = taskItem.closest('li');
-            const taskList = taskItem.querySelector("[data-field='list'] .display-text").textContent.replace("List: ", "");
+        tasks.forEach(task => {
+            const taskElement = document.querySelector(`li[data-id="${task.id}"]`);
+            if (!taskElement) return;
 
-            if (listName === taskList) {
-                parentLi.style.display = "flex";
+            const shouldShow = task.list === listName;
+
+            if (shouldShow) {
+                taskElement.style.display = "flex";
                 hasVisibleTasks = true;
             } else {
-                parentLi.style.display = "none";
+                taskElement.style.display = "none";
             }
         });
 
@@ -796,18 +942,23 @@ document.addEventListener("DOMContentLoaded", function() {
     function showAllTasks(viewTitle) {
         updatePageTitle(viewTitle);
 
-        const taskItems = document.querySelectorAll(".task-item");
-        taskItems.forEach(taskItem => {
-            const parentLi = taskItem.closest('li');
-            parentLi.style.display = "flex";
+        // Show all task elements
+        tasks.forEach(task => {
+            const taskElement = document.querySelector(`li[data-id="${task.id}"]`);
+            if (taskElement) {
+                taskElement.style.display = "flex";
+            }
         });
 
         removeNoTasksMessage();
     }
 
+// Updated utility functions that were causing issues
     function updatePageTitle(newTitle) {
         const titleElement = document.querySelector(".today-title");
-        titleElement.textContent = newTitle;
+        if (titleElement) {
+            titleElement.textContent = newTitle;
+        }
     }
 
     function showNoTasksMessage(viewTitle) {
@@ -815,11 +966,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
         const messageDiv = document.createElement("div");
         messageDiv.id = "no-tasks-message";
-        messageDiv.style.cssText = "text-align: center; margin-top: 30px; color: #888; font-size: 16px;";
+        messageDiv.style.cssText = "text-align: center; margin-top: 30px; color: #888; font-size: 16px; padding: 20px;";
         messageDiv.innerHTML = `No tasks found for <strong>${viewTitle}</strong>.<br>Add a new task to get started.`;
 
-        const taskList = document.getElementById("task-list");
-        taskList.parentNode.appendChild(messageDiv);
+        const taskListContainer = document.querySelector(".task-list-container");
+        if (taskListContainer) {
+            taskListContainer.appendChild(messageDiv);
+        }
     }
 
     function removeNoTasksMessage() {
@@ -1201,6 +1354,8 @@ document.addEventListener("DOMContentLoaded", function() {
         return '';
     }
 
+
+// Helper function to format date for comparison (YYYY-MM-DD)
     function formatDateForComparison(date) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
