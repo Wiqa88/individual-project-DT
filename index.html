@@ -1391,17 +1391,7 @@
       this.clearErrors();
     }
 
-    checkAuthState() {
-      const rememberedUser = localStorage.getItem('rememberedUser');
-      if (rememberedUser) {
-        document.getElementById('loginEmail').value = rememberedUser;
-      }
 
-      if (this.currentUser) {
-        this.showNotification(`Welcome back, ${this.currentUser.name}!`, 'success');
-        setTimeout(() => this.redirectToDashboard(), 2000);
-      }
-    }
 
     redirectToDashboard() {
       sessionStorage.setItem('isAuthenticated', 'true');
@@ -1649,5 +1639,174 @@
   console.log('');
   console.log('🔗 Create test reset link: window.createTestResetLink("your-email@example.com")');
 </script>
+
+
+<script>
+  // Handle direct navigation to forgot password form
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('Password reset page loaded, checking URL parameters...');
+
+    // Check URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    const email = urlParams.get('email');
+    const from = urlParams.get('from');
+
+    console.log('URL Parameters:', { mode, email, from });
+
+    // If opened from todo app with forgot password mode
+    if (mode === 'forgot-password') {
+      console.log('Forgot password mode detected, setting up...');
+
+      // Wait for auth system to be ready
+      function waitForAuthSystem() {
+        if (window.authSystem) {
+          console.log('Auth system found, triggering forgot password form...');
+
+          // Show forgot password form
+          window.authSystem.showForgotPasswordForm();
+
+          // Pre-fill email if provided
+          if (email) {
+            setTimeout(() => {
+              const emailField = document.getElementById('forgotEmail');
+              if (emailField) {
+                emailField.value = decodeURIComponent(email);
+                console.log('Email pre-filled:', email);
+              }
+            }, 500);
+          }
+
+          // Show notification
+          if (window.authSystem.showNotification) {
+            window.authSystem.showNotification('Enter your email to receive a password reset link', 'info');
+          }
+
+        } else {
+          console.log('Auth system not ready, waiting...');
+          setTimeout(waitForAuthSystem, 100);
+        }
+      }
+
+      // Start waiting for auth system
+      waitForAuthSystem();
+    }
+
+    // Handle return to tasks functionality
+    if (from === 'todo-app') {
+      console.log('Opened from todo app, setting up return functionality...');
+
+      // Add return to tasks button to success messages
+      setTimeout(() => {
+        addReturnToTasksButton();
+      }, 1000);
+    }
+  });
+
+  // Listen for messages from parent window (todo app)
+  window.addEventListener('message', function(event) {
+    console.log('Received message:', event.data);
+
+    if (event.data && event.data.action === 'show-forgot-password') {
+      console.log('Message received to show forgot password form');
+
+      // Wait for auth system and then show forgot password
+      function waitAndShow() {
+        if (window.authSystem) {
+          window.authSystem.showForgotPasswordForm();
+
+          if (event.data.email) {
+            setTimeout(() => {
+              const emailField = document.getElementById('forgotEmail');
+              if (emailField) {
+                emailField.value = event.data.email;
+                console.log('Email set via message:', event.data.email);
+              }
+            }, 500);
+          }
+        } else {
+          setTimeout(waitAndShow, 100);
+        }
+      }
+
+      waitAndShow();
+    }
+  });
+
+  // Function to add "Return to Tasks" button
+  function addReturnToTasksButton() {
+    const successMessages = document.querySelectorAll('.success-message');
+
+    successMessages.forEach(msg => {
+      // Check if return button already exists
+      if (msg.querySelector('.return-to-tasks-btn')) {
+        return;
+      }
+
+      const returnBtn = document.createElement('button');
+      returnBtn.className = 'continue-btn return-to-tasks-btn';
+      returnBtn.style.marginLeft = '10px';
+      returnBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+      returnBtn.innerHTML = '<i class="fas fa-arrow-left"></i> Return to Tasks';
+
+      returnBtn.onclick = function() {
+        // Try to close the popup window
+        if (window.opener && !window.opener.closed) {
+          window.close();
+        } else {
+          // Fallback: redirect to todo page
+          window.location.href = 'todo.html';
+        }
+      };
+
+      const existingBtn = msg.querySelector('.continue-btn');
+      if (existingBtn && existingBtn.parentNode) {
+        existingBtn.parentNode.appendChild(returnBtn);
+      }
+    });
+  }
+
+  // Override the original continue buttons to handle return to tasks
+  document.addEventListener('click', function(e) {
+    if (e.target && e.target.id === 'continueBtn') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const from = urlParams.get('from');
+
+      if (from === 'todo-app') {
+        e.preventDefault();
+
+        // Try to close popup and return to todo app
+        if (window.opener && !window.opener.closed) {
+          // Notify parent window of successful signup
+          window.opener.postMessage({
+            type: 'account-created',
+            timestamp: new Date().toISOString()
+          }, '*');
+          window.close();
+        } else {
+          // Fallback redirect
+          window.location.href = 'todo.html';
+        }
+      }
+    }
+
+    if (e.target && e.target.id === 'continueToLoginBtn') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const from = urlParams.get('from');
+
+      if (from === 'todo-app') {
+        e.preventDefault();
+
+        // Show login form instead of redirecting
+        if (window.authSystem) {
+          window.authSystem.showLoginForm();
+        }
+      }
+    }
+  });
+
+  console.log('Password reset page handler loaded and ready');
+</script>
+
 </body>
 </html>

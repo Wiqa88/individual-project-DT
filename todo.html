@@ -532,21 +532,131 @@
 
   function showChangePassword() {
     closeUserMenu();
-    const oldPassword = prompt('Enter your current password:');
-    if (!oldPassword) return;
 
-    const newPassword = prompt('Enter your new password:');
-    if (!newPassword) return;
-
-    const confirmPassword = prompt('Confirm your new password:');
-    if (newPassword !== confirmPassword) {
-      alert('Passwords do not match!');
+    if (!window.userDataManager || !window.userDataManager.currentUser) {
+      alert('Error: No user logged in');
       return;
     }
 
-    // Change password logic would go here
-    alert('Password change functionality will be implemented with backend integration.');
+    const currentUser = window.userDataManager.currentUser;
+
+    // Create URL with specific parameters to trigger forgot password form
+    const baseUrl = 'index.html';
+    const params = new URLSearchParams({
+      mode: 'forgot-password',  // This will trigger the forgot password form
+      email: currentUser.email,
+      from: 'todo-app'
+    });
+
+    const passwordResetUrl = `${baseUrl}?${params.toString()}`;
+
+    console.log('Opening password reset URL:', passwordResetUrl);
+
+    // Window configuration for optimal user experience
+    const windowFeatures = [
+      'width=950',
+      'height=750',
+      'left=' + (screen.width / 2 - 475),
+      'top=' + (screen.height / 2 - 375),
+      'scrollbars=yes',
+      'resizable=yes',
+      'menubar=no',
+      'toolbar=no',
+      'location=no',
+      'status=no'
+    ].join(',');
+
+    const passwordWindow = window.open(passwordResetUrl, 'PasswordReset', windowFeatures);
+
+    if (passwordWindow) {
+      passwordWindow.focus();
+
+      // Wait for the window to fully load, then trigger forgot password form
+      passwordWindow.addEventListener('load', function() {
+        console.log('Password window loaded, triggering forgot password form...');
+
+        setTimeout(() => {
+          try {
+            // Trigger forgot password form in the new window
+            if (passwordWindow.authSystem) {
+              passwordWindow.authSystem.showForgotPasswordForm();
+              console.log('Forgot password form triggered via authSystem');
+            }
+
+            // Pre-fill email
+            const emailField = passwordWindow.document.getElementById('forgotEmail');
+            if (emailField) {
+              emailField.value = currentUser.email;
+              console.log('Email pre-filled:', currentUser.email);
+            }
+          } catch (error) {
+            console.log('Cross-origin restriction, using postMessage instead:', error);
+
+            // Use postMessage to communicate with the child window
+            passwordWindow.postMessage({
+              action: 'show-forgot-password',
+              email: currentUser.email
+            }, '*');
+          }
+        }, 1000); // Give more time for the page to fully load
+      });
+
+      showTaskNotification(`Password reset opened for ${currentUser.email}`, 'success');
+
+    } else {
+      // Fallback if popup was blocked
+      showTaskNotification('Popup blocked. Redirecting...', 'warning');
+
+      setTimeout(() => {
+        const fallbackChoice = confirm(
+                'Unable to open popup. Would you like to go to the password reset page?\n\n' +
+                '(You will need to navigate back to your tasks afterward)'
+        );
+
+        if (fallbackChoice) {
+          sessionStorage.setItem('returnToTasks', 'true');
+          sessionStorage.setItem('taskManagerReturnUrl', window.location.href);
+          window.location.href = passwordResetUrl;
+        }
+      }, 1000);
+    }
   }
+
+  function showChangePasswordSimple() {
+    closeUserMenu();
+
+    if (!window.userDataManager || !window.userDataManager.currentUser) {
+      alert('Error: No user logged in');
+      return;
+    }
+
+    const currentUser = window.userDataManager.currentUser;
+
+    // Create URL with forgot password trigger
+    const passwordResetUrl = `index.html?mode=forgot-password&email=${encodeURIComponent(currentUser.email)}`;
+
+    // Open in new window
+    const passwordWindow = window.open(
+            passwordResetUrl,
+            'PasswordReset',
+            'width=950,height=750,scrollbars=yes,resizable=yes'
+    );
+
+    if (passwordWindow) {
+      passwordWindow.focus();
+      showTaskNotification('Password reset page opened', 'success');
+    } else {
+      // Direct redirect fallback
+      const goToPage = confirm('Popup blocked. Go to password reset page in current tab?');
+      if (goToPage) {
+        sessionStorage.setItem('returnToTasks', window.location.href);
+        window.location.href = passwordResetUrl;
+      }
+    }
+  }
+
+
+
 
   function showPreferences() {
     closeUserMenu();

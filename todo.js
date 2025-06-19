@@ -335,7 +335,6 @@ document.addEventListener("DOMContentLoaded", function() {
         taskDescription.style.height = 'auto';
     }
 
-    // Fixed renderTasks function with correct priority order
     function renderTasks() {
         console.log(`🎨 Rendering ${tasks.length} tasks...`);
         taskList.innerHTML = '';
@@ -366,9 +365,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 return 1;
             }
 
-            // Fixed priority order - using lowercase keys
-            const priorityOrder = {'high': 0, 'medium': 1, 'low': 2, 'N/A': 3};
-            return (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
+            const priorityOrder = {high: 0, medium: 1, low: 2, 'N/A': 3};
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
         });
 
         sortedTasks.forEach(task => {
