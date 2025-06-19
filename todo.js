@@ -5,7 +5,11 @@
 let tasks = [];
 let lists = [];
 
-
+let currentView = {
+    type: 'inbox', // 'inbox', 'today', 'next7days', 'important', 'list'
+    name: 'Inbox', // Display name
+    listName: null  // For list views
+};
 
 
 // Wait for DOM to be fully loaded before executing any code
@@ -215,7 +219,7 @@ document.addEventListener("DOMContentLoaded", function() {
             description: taskDescription.value.trim(),
             date: dueDate.value || null,
             reminder: reminder.value || null,
-            priority: normalizeTaskPriority(priority.value), // Use the normalizer
+            priority: normalizeTaskPriority(priority.value),
             list: listSelect.value !== 'default' ? listSelect.value : 'N/A',
             completed: false,
             createdAt: new Date().toISOString(),
@@ -223,24 +227,14 @@ document.addEventListener("DOMContentLoaded", function() {
             userId: window.userDataManager.currentUser.id || window.userDataManager.currentUser.email
         };
 
-        // Debug function to check task priorities
-        function debugTaskPriorities() {
-            console.log("Current task priorities:");
-            tasks.forEach((task, index) => {
-                console.log(`Task ${index}: "${task.title}" - Priority: "${task.priority}" (${typeof task.priority})`);
-            });
-        }
-
-
-
         // Add to tasks array
         tasks.push(newTask);
 
         // Save to user-specific storage
         saveTasks();
 
-        // Re-render tasks
-        renderTasks();
+        // Refresh current view instead of just calling renderTasks
+        refreshCurrentView();
 
         // Clear form
         clearTaskForm();
@@ -249,7 +243,6 @@ document.addEventListener("DOMContentLoaded", function() {
         console.log(`✅ Task added successfully for ${window.userDataManager.currentUser.email}`);
         showTaskNotification('Task added successfully!', 'success');
     }
-
     function deleteTask(taskId, taskElement) {
         if (confirm("Are you sure you want to delete this task?")) {
             console.log(`🗑️ Deleting task ${taskId} for ${window.userDataManager.currentUser.email}`);
@@ -258,26 +251,79 @@ document.addEventListener("DOMContentLoaded", function() {
             const originalLength = tasks.length;
             tasks = tasks.filter(task => task.id !== taskId);
 
-            // Remove from DOM
-            if (taskElement && taskElement.parentNode) {
-                taskElement.style.transition = 'all 0.3s ease';
-                taskElement.style.opacity = '0';
-                taskElement.style.transform = 'translateX(-100%)';
-
-                setTimeout(() => {
-                    if (taskElement.parentNode) {
-                        taskElement.remove();
-                    }
-                }, 300);
-            }
-
             // Save changes
             saveTasks();
+
+            // Refresh current view instead of manipulating DOM
+            refreshCurrentView();
 
             console.log(`✅ Task deleted. Tasks: ${originalLength} → ${tasks.length}`);
             showTaskNotification('Task deleted successfully!', 'success');
         }
     }
+
+    function debugNavigationAfterSort() {
+        console.log('🧪 Testing navigation after sorting...');
+        console.log('Current view:', currentView);
+        console.log('Total tasks:', tasks.length);
+
+        // Test each navigation function
+        const testFunctions = [
+            { name: 'Today', func: () => filterTodayTasks() },
+            { name: 'Next 7 Days', func: () => filterNext7DaysTasks() },
+            { name: 'Important', func: () => filterImportantTasks() },
+            { name: 'Inbox', func: () => showAllTasks('Inbox') }
+        ];
+
+        console.log('Testing navigation functions...');
+        testFunctions.forEach(test => {
+            try {
+                test.func();
+                console.log(`✅ ${test.name}: Working`);
+            } catch (error) {
+                console.log(`❌ ${test.name}: Error -`, error);
+            }
+        });
+
+        // Test list navigation if lists exist
+        if (lists && lists.length > 0) {
+            try {
+                filterTasksByList(lists[0]);
+                console.log(`✅ List navigation (${lists[0]}): Working`);
+            } catch (error) {
+                console.log(`❌ List navigation: Error -`, error);
+            }
+        }
+
+        return 'Navigation test complete. Check console for results.';
+    }
+
+
+    function refreshCurrentView() {
+        console.log(`🔄 Refreshing current view: ${currentView.name}`);
+
+        switch(currentView.type) {
+            case 'today':
+                filterTodayTasks();
+                break;
+            case 'next7days':
+                filterNext7DaysTasks();
+                break;
+            case 'important':
+                filterImportantTasks();
+                break;
+            case 'list':
+                filterTasksByList(currentView.listName);
+                break;
+            case 'inbox':
+            default:
+                showAllTasks(currentView.name);
+                break;
+        }
+    }
+
+
+
 
     function toggleTaskCompletion(task, taskRingElement, taskItemElement) {
         const newCompletedState = !task.completed;
@@ -338,8 +384,19 @@ document.addEventListener("DOMContentLoaded", function() {
         taskDescription.style.height = 'auto';
     }
 
+// Updated renderTasks function to use the new system when no specific view is set
     function renderTasks() {
-        console.log(`🎨 Rendering ${tasks.length} tasks...`);
+        console.log(`🎨 Rendering ${tasks.length} tasks (default view)...`);
+
+        // If we're in a specific view, use that rendering
+        if (currentView.type !== 'inbox') {
+            const filteredTasks = filterTasksByCurrentView(tasks);
+            renderTasksInCurrentView(filteredTasks);
+            return;
+        }
+
+        // Default inbox view with default sorting
+        const taskList = document.getElementById("task-list");
         taskList.innerHTML = '';
 
         if (tasks.length === 0) {
@@ -354,7 +411,7 @@ document.addEventListener("DOMContentLoaded", function() {
             return;
         }
 
-        // Sort tasks: completed at bottom, then by date, then by priority
+        // Sort tasks: completed at bottom, then by date, then by priority (default behavior)
         const sortedTasks = [...tasks].sort((a, b) => {
             if (a.completed !== b.completed) {
                 return a.completed ? 1 : -1;
@@ -369,7 +426,7 @@ document.addEventListener("DOMContentLoaded", function() {
             }
 
             const priorityOrder = {high: 0, medium: 1, low: 2, 'N/A': 3};
-            return priorityOrder[a.priority] - priorityOrder[b.priority];
+            return (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3);
         });
 
         sortedTasks.forEach(task => {
@@ -377,7 +434,7 @@ document.addEventListener("DOMContentLoaded", function() {
             taskList.appendChild(taskItem);
         });
 
-        console.log(`✅ Rendered ${sortedTasks.length} task elements`);
+        console.log(`✅ Rendered ${sortedTasks.length} task elements (default view)`);
     }
 
     function createTaskElement(task) {
@@ -635,114 +692,95 @@ document.addEventListener("DOMContentLoaded", function() {
         // Today view - first link (nth-child(1))
         document.querySelector(".menu a:nth-child(1)").addEventListener("click", function(e) {
             e.preventDefault();
+            currentView = { type: 'today', name: 'Today', listName: null };
             filterTodayTasks();
         });
 
         // Next 7 Days view - second link (nth-child(2))
         document.querySelector(".menu a:nth-child(2)").addEventListener("click", function(e) {
             e.preventDefault();
+            currentView = { type: 'next7days', name: 'Next 7 Days', listName: null };
             filterNext7DaysTasks();
         });
 
         // Important view - third link (nth-child(3))
         document.querySelector(".menu a:nth-child(3)").addEventListener("click", function(e) {
             e.preventDefault();
+            currentView = { type: 'important', name: 'Important', listName: null };
             filterImportantTasks();
         });
 
         // Inbox view (All tasks) - fourth link (nth-child(4))
         document.querySelector(".menu a:nth-child(4)").addEventListener("click", function(e) {
             e.preventDefault();
+            currentView = { type: 'inbox', name: 'Inbox', listName: null };
             showAllTasks("Inbox");
         });
-
-        // REMOVED: Add task link event listener since it no longer exists
     }
-    function setupNavigationEventsBest() {
-        // Get all menu links in the first menu section only
-        const firstMenuSection = document.querySelector(".menu");
-        const menuLinks = firstMenuSection.querySelectorAll("a");
 
-        menuLinks.forEach(link => {
-            const text = link.textContent.trim();
-            const icon = link.querySelector('i');
 
-            if (text === 'Today' || (icon && icon.classList.contains('fa-calendar-day'))) {
-                link.addEventListener("click", function(e) {
-                    e.preventDefault();
-                    filterTodayTasks();
-                    console.log('Today filter activated');
-                });
-            } else if (text === 'Next 7 Days' || (icon && icon.classList.contains('fa-calendar-week'))) {
-                link.addEventListener("click", function(e) {
-                    e.preventDefault();
-                    filterNext7DaysTasks();
-                    console.log('Next 7 Days filter activated');
-                });
-            } else if (text === 'Important' || (icon && icon.classList.contains('fa-star'))) {
-                link.addEventListener("click", function(e) {
-                    e.preventDefault();
-                    filterImportantTasks();
-                    console.log('Important filter activated');
-                });
-            } else if (text === 'Inbox' || (icon && icon.classList.contains('fa-inbox'))) {
-                link.addEventListener("click", function(e) {
-                    e.preventDefault();
-                    showAllTasks("Inbox");
-                    console.log('Inbox (all tasks) filter activated');
-                });
-            }
+
+// New unified rendering function that always creates fresh elements
+    function renderTasksInCurrentView(tasksToRender) {
+        console.log(`🎨 Rendering ${tasksToRender.length} tasks in ${currentView.name} view...`);
+
+        const taskList = document.getElementById("task-list");
+        taskList.innerHTML = '';
+
+        if (tasksToRender.length === 0) {
+            const emptyMessage = document.createElement('li');
+            emptyMessage.className = 'empty-message';
+            emptyMessage.style.textAlign = 'center';
+            emptyMessage.style.color = '#888';
+            emptyMessage.style.fontStyle = 'italic';
+            emptyMessage.style.padding = '20px';
+            emptyMessage.textContent = `No tasks found for ${currentView.name}. Add a new task to get started.`;
+            taskList.appendChild(emptyMessage);
+            return;
+        }
+
+        // Create fresh task elements
+        tasksToRender.forEach(task => {
+            const taskElement = createTaskElement(task);
+            taskList.appendChild(taskElement);
         });
+
+        console.log(`✅ Rendered ${tasksToRender.length} task elements in ${currentView.name} view`);
+        removeNoTasksMessage();
     }
 
 
-
-
+    // Updated filter functions to set current view
     function filterTodayTasks() {
         updatePageTitle("Today");
+        currentView = { type: 'today', name: 'Today', listName: null };
 
         const today = new Date();
         const todayString = formatDateForComparison(today);
 
         console.log('Filtering for today:', todayString);
 
-        let hasVisibleTasks = false;
+        // Filter from the tasks array instead of DOM manipulation
+        const todayTasks = tasks.filter(task => {
+            if (!task.date) return false;
 
-        tasks.forEach(task => {
-            const taskElement = document.querySelector(`li[data-id="${task.id}"]`);
-            if (!taskElement) return;
-
-            let shouldShow = false;
-
-            if (task.date) {
-                // Convert task date to comparison format
-                let taskDateString;
-
-                if (task.date.includes('/')) {
-                    // Format: DD/MM/YYYY -> YYYY-MM-DD
-                    const parts = task.date.split('/');
-                    if (parts.length === 3) {
-                        taskDateString = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-                    }
-                } else if (task.date.includes('-')) {
-                    // Already in YYYY-MM-DD format
-                    taskDateString = task.date;
+            let taskDateString;
+            if (task.date.includes('/')) {
+                const parts = task.date.split('/');
+                if (parts.length === 3) {
+                    taskDateString = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
                 }
-
-                if (taskDateString === todayString) {
-                    shouldShow = true;
-                }
+            } else if (task.date.includes('-')) {
+                taskDateString = task.date;
             }
 
-            if (shouldShow) {
-                taskElement.style.display = "flex";
-                hasVisibleTasks = true;
-            } else {
-                taskElement.style.display = "none";
-            }
+            return taskDateString === todayString;
         });
 
-        if (!hasVisibleTasks) {
+        // Re-render with filtered tasks
+        renderTasksInCurrentView(todayTasks);
+
+        if (todayTasks.length === 0) {
             showNoTasksMessage("Today");
         } else {
             removeNoTasksMessage();
@@ -753,6 +791,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function filterNext7DaysTasks() {
         updatePageTitle("Next 7 Days");
+        currentView = { type: 'next7days', name: 'Next 7 Days', listName: null };
 
         const today = new Date();
         const next7Days = new Date(today);
@@ -763,79 +802,73 @@ document.addEventListener("DOMContentLoaded", function() {
 
         console.log('Filtering for next 7 days:', todayString, 'to', next7DaysString);
 
-        let hasVisibleTasks = false;
+        // Filter from the tasks array instead of DOM manipulation
+        const next7DaysTasks = tasks.filter(task => {
+            if (!task.date) return false;
 
-        tasks.forEach(task => {
-            const taskElement = document.querySelector(`li[data-id="${task.id}"]`);
-            if (!taskElement) return;
-
-            let shouldShow = false;
-
-            if (task.date) {
-                // Convert task date to comparison format
-                let taskDateString;
-
-                if (task.date.includes('/')) {
-                    // Format: DD/MM/YYYY -> YYYY-MM-DD
-                    const parts = task.date.split('/');
-                    if (parts.length === 3) {
-                        taskDateString = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-                    }
-                } else if (task.date.includes('-')) {
-                    // Already in YYYY-MM-DD format
-                    taskDateString = task.date;
+            let taskDateString;
+            if (task.date.includes('/')) {
+                const parts = task.date.split('/');
+                if (parts.length === 3) {
+                    taskDateString = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
                 }
-
-                if (taskDateString && taskDateString >= todayString && taskDateString <= next7DaysString) {
-                    shouldShow = true;
-                }
+            } else if (task.date.includes('-')) {
+                taskDateString = task.date;
             }
 
-            if (shouldShow) {
-                taskElement.style.display = "flex";
-                hasVisibleTasks = true;
-            } else {
-                taskElement.style.display = "none";
-            }
+            return taskDateString && taskDateString >= todayString && taskDateString <= next7DaysString;
         });
 
-        if (!hasVisibleTasks) {
+        // Re-render with filtered tasks
+        renderTasksInCurrentView(next7DaysTasks);
+
+        if (next7DaysTasks.length === 0) {
             showNoTasksMessage("Next 7 Days");
         } else {
             removeNoTasksMessage();
         }
     }
 
-
-
     function filterImportantTasks() {
         updatePageTitle("Important");
+        currentView = { type: 'important', name: 'Important', listName: null };
 
-        let hasVisibleTasks = false;
-
-        tasks.forEach(task => {
-            const taskElement = document.querySelector(`li[data-id="${task.id}"]`);
-            if (!taskElement) return;
-
-            // Check if task has high priority (case insensitive)
+        // Filter from the tasks array instead of DOM manipulation
+        const importantTasks = tasks.filter(task => {
             const taskPriority = (task.priority || '').toLowerCase();
-            const shouldShow = taskPriority === 'high';
-
-            if (shouldShow) {
-                taskElement.style.display = "flex";
-                hasVisibleTasks = true;
-            } else {
-                taskElement.style.display = "none";
-            }
+            return taskPriority === 'high';
         });
 
-        if (!hasVisibleTasks) {
+        // Re-render with filtered tasks
+        renderTasksInCurrentView(importantTasks);
+
+        if (importantTasks.length === 0) {
             showNoTasksMessage("Important");
         } else {
             removeNoTasksMessage();
         }
     }
 
+
+    // Debug function to check current view
+    function debugCurrentView() {
+        console.log('🔍 Current View State:');
+        console.log('Type:', currentView.type);
+        console.log('Name:', currentView.name);
+        console.log('List Name:', currentView.listName);
+        console.log('Total tasks:', tasks.length);
+
+        // Check how many tasks would be shown in current view
+        const filteredTasks = filterTasksByCurrentView(tasks);
+        console.log(`Tasks that should show in ${currentView.name}:`, filteredTasks.length);
+
+        return {
+            currentView,
+            totalTasks: tasks.length,
+            filteredTasks: filteredTasks.length,
+            filteredTaskTitles: filteredTasks.map(t => t.title)
+        };
+    }
 
 
     function filterTasksByDate(dateString, viewTitle) {
@@ -955,6 +988,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function filterTasksByList(listName) {
         updatePageTitle(listName);
+        currentView = { type: 'list', name: listName, listName: listName };
 
         // Clear active states from all list names
         document.querySelectorAll('.list-name').forEach(el => {
@@ -968,32 +1002,23 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
 
-        let hasVisibleTasks = false;
+        // Filter from the tasks array instead of DOM manipulation
+        const listTasks = tasks.filter(task => task.list === listName);
 
-        tasks.forEach(task => {
-            const taskElement = document.querySelector(`li[data-id="${task.id}"]`);
-            if (!taskElement) return;
+        // Re-render with filtered tasks
+        renderTasksInCurrentView(listTasks);
 
-            const shouldShow = task.list === listName;
-
-            if (shouldShow) {
-                taskElement.style.display = "flex";
-                hasVisibleTasks = true;
-            } else {
-                taskElement.style.display = "none";
-            }
-        });
-
-        if (!hasVisibleTasks) {
+        if (listTasks.length === 0) {
             showNoTasksMessage(listName);
         } else {
             removeNoTasksMessage();
         }
     }
 
-// Enhanced showAllTasks function to ensure it shows ALL tasks
+
     function showAllTasks(viewTitle) {
         updatePageTitle(viewTitle);
+        currentView = { type: 'inbox', name: 'Inbox', listName: null };
 
         console.log(`📥 Showing all tasks for ${viewTitle}. Total tasks: ${tasks.length}`);
 
@@ -1002,25 +1027,13 @@ document.addEventListener("DOMContentLoaded", function() {
             el.classList.remove('active');
         });
 
-        // Show all task elements by iterating through the tasks array
-        let shownTasksCount = 0;
-        tasks.forEach(task => {
-            const taskElement = document.querySelector(`li[data-id="${task.id}"]`);
-            if (taskElement) {
-                taskElement.style.display = "flex";
-                shownTasksCount++;
-            }
-        });
+        // Re-render with all tasks
+        renderTasksInCurrentView(tasks);
 
-        console.log(`✅ Displayed ${shownTasksCount} out of ${tasks.length} tasks in ${viewTitle}`);
-
-        // Remove any "no tasks" message since we're showing all tasks
-        removeNoTasksMessage();
-
-        // If no tasks are shown but we have tasks in the array, re-render
-        if (shownTasksCount === 0 && tasks.length > 0) {
-            console.log('⚠️ No tasks displayed but tasks exist in array. Re-rendering...');
-            renderTasks();
+        if (tasks.length === 0) {
+            showNoTasksMessage(viewTitle);
+        } else {
+            removeNoTasksMessage();
         }
     }
 // Debug function to check navigation setup
@@ -1144,51 +1157,44 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     function sortTasks(sortType) {
-        console.log(`Sorting ${tasks.length} tasks by: ${sortType}`);
+        console.log(`Sorting ${tasks.length} tasks by: ${sortType} in view: ${currentView.name}`);
 
-        // Create a copy of tasks array and sort it
-        let sortedTasks = [...tasks];
+        // Get tasks for current view first
+        const currentViewTasks = filterTasksByCurrentView(tasks);
+
+        // Then sort them
+        let sortedTasks = [...currentViewTasks];
 
         switch(sortType) {
             case "date":
                 sortedTasks.sort((a, b) => {
-                    // Handle null/undefined dates
                     if (!a.date && !b.date) return 0;
-                    if (!a.date) return 1; // Tasks without dates go to the end
+                    if (!a.date) return 1;
                     if (!b.date) return -1;
 
-                    // Convert dates to comparable format
                     const dateA = convertDateForSorting(a.date);
                     const dateB = convertDateForSorting(b.date);
-
                     return dateA - dateB;
                 });
                 break;
 
             case "priority":
                 sortedTasks.sort((a, b) => {
-                    // Define priority order (high = 1, medium = 2, low = 3, null/undefined = 4)
                     const priorityOrder = {
-                        "high": 1,
-                        "High": 1,
-                        "medium": 2,
-                        "Medium": 2,
-                        "low": 3,
-                        "Low": 3
+                        "high": 1, "High": 1,
+                        "medium": 2, "Medium": 2,
+                        "low": 3, "Low": 3
                     };
 
                     const priorityA = priorityOrder[a.priority] || 4;
                     const priorityB = priorityOrder[b.priority] || 4;
-
-                    console.log(`Comparing priorities: ${a.priority} (${priorityA}) vs ${b.priority} (${priorityB})`);
-
                     return priorityA - priorityB;
                 });
                 break;
 
             case "list":
                 sortedTasks.sort((a, b) => {
-                    const listA = a.list || "Z"; // Put tasks without lists at the end
+                    const listA = a.list || "Z";
                     const listB = b.list || "Z";
                     return listA.localeCompare(listB);
                 });
@@ -1199,11 +1205,103 @@ document.addEventListener("DOMContentLoaded", function() {
                 return;
         }
 
-        console.log("Sorted tasks:", sortedTasks.map(t => ({ title: t.title, priority: t.priority, date: t.date })));
+        console.log(`Sorted and filtered tasks: ${sortedTasks.length} tasks for ${currentView.name}`);
 
-        // Re-render tasks in the new order
-        renderSortedTasks(sortedTasks);
+        // Re-render with sorted tasks
+        renderTasksInCurrentView(sortedTasks);
     }
+
+// Function to filter tasks based on current view
+    function filterTasksByCurrentView(tasksToFilter) {
+        switch(currentView.type) {
+            case 'today':
+                const today = new Date();
+                const todayString = formatDateForComparison(today);
+                return tasksToFilter.filter(task => {
+                    if (!task.date) return false;
+
+                    let taskDateString;
+                    if (task.date.includes('/')) {
+                        const parts = task.date.split('/');
+                        if (parts.length === 3) {
+                            taskDateString = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                        }
+                    } else if (task.date.includes('-')) {
+                        taskDateString = task.date;
+                    }
+
+                    return taskDateString === todayString;
+                });
+
+            case 'next7days':
+                const startDate = new Date();
+                const endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + 7);
+
+                const startDateString = formatDateForComparison(startDate);
+                const endDateString = formatDateForComparison(endDate);
+
+                return tasksToFilter.filter(task => {
+                    if (!task.date) return false;
+
+                    let taskDateString;
+                    if (task.date.includes('/')) {
+                        const parts = task.date.split('/');
+                        if (parts.length === 3) {
+                            taskDateString = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                        }
+                    } else if (task.date.includes('-')) {
+                        taskDateString = task.date;
+                    }
+
+                    return taskDateString && taskDateString >= startDateString && taskDateString <= endDateString;
+                });
+
+            case 'important':
+                return tasksToFilter.filter(task => {
+                    const taskPriority = (task.priority || '').toLowerCase();
+                    return taskPriority === 'high';
+                });
+
+            case 'list':
+                return tasksToFilter.filter(task => task.list === currentView.listName);
+
+            case 'inbox':
+            default:
+                return tasksToFilter; // Show all tasks
+        }
+    }
+
+
+    // Enhanced renderSortedTasks that respects current view
+    function renderSortedTasksInCurrentView(sortedTasks) {
+        const taskList = document.getElementById("task-list");
+        taskList.innerHTML = '';
+
+        if (sortedTasks.length === 0) {
+            const emptyMessage = document.createElement('li');
+            emptyMessage.className = 'empty-message';
+            emptyMessage.style.textAlign = 'center';
+            emptyMessage.style.color = '#888';
+            emptyMessage.style.fontStyle = 'italic';
+            emptyMessage.style.padding = '20px';
+            emptyMessage.textContent = `No tasks found for ${currentView.name}. Add a new task to get started.`;
+            taskList.appendChild(emptyMessage);
+            return;
+        }
+
+        // Create task elements in the sorted order
+        sortedTasks.forEach(task => {
+            const taskElement = createTaskElement(task);
+            taskList.appendChild(taskElement);
+        });
+
+        console.log(`✅ Rendered ${sortedTasks.length} sorted tasks in ${currentView.name} view`);
+
+        // Remove any existing "no tasks" messages
+        removeNoTasksMessage();
+    }
+
 
     function renderSortedTasks(sortedTasks) {
         const taskList = document.getElementById("task-list");
