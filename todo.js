@@ -627,38 +627,74 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
 
+
     function setupNavigationEvents() {
-        // Today view
-        document.querySelector(".menu a:nth-child(2)").addEventListener("click", function(e) {
+        // Today view - first link (nth-child(1))
+        document.querySelector(".menu a:nth-child(1)").addEventListener("click", function(e) {
             e.preventDefault();
             filterTodayTasks();
         });
 
-        // Next 7 Days view
-        document.querySelector(".menu a:nth-child(3)").addEventListener("click", function(e) {
+        // Next 7 Days view - second link (nth-child(2))
+        document.querySelector(".menu a:nth-child(2)").addEventListener("click", function(e) {
             e.preventDefault();
             filterNext7DaysTasks();
         });
 
-        // Important view
-        document.querySelector(".menu a:nth-child(4)").addEventListener("click", function(e) {
+        // Important view - third link (nth-child(3))
+        document.querySelector(".menu a:nth-child(3)").addEventListener("click", function(e) {
             e.preventDefault();
             filterImportantTasks();
         });
 
-        // Inbox view (All tasks)
-        document.querySelector(".menu a:nth-child(5)").addEventListener("click", function(e) {
+        // Inbox view (All tasks) - fourth link (nth-child(4))
+        document.querySelector(".menu a:nth-child(4)").addEventListener("click", function(e) {
             e.preventDefault();
             showAllTasks("Inbox");
         });
 
-        // Add task link
-        document.querySelector(".menu a:nth-child(1)").addEventListener("click", function(e) {
-            e.preventDefault();
-            taskCreationBox.classList.add("expanded");
-            taskTitle.focus();
+        // REMOVED: Add task link event listener since it no longer exists
+    }
+    function setupNavigationEventsBest() {
+        // Get all menu links in the first menu section only
+        const firstMenuSection = document.querySelector(".menu");
+        const menuLinks = firstMenuSection.querySelectorAll("a");
+
+        menuLinks.forEach(link => {
+            const text = link.textContent.trim();
+            const icon = link.querySelector('i');
+
+            if (text === 'Today' || (icon && icon.classList.contains('fa-calendar-day'))) {
+                link.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    filterTodayTasks();
+                    console.log('Today filter activated');
+                });
+            } else if (text === 'Next 7 Days' || (icon && icon.classList.contains('fa-calendar-week'))) {
+                link.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    filterNext7DaysTasks();
+                    console.log('Next 7 Days filter activated');
+                });
+            } else if (text === 'Important' || (icon && icon.classList.contains('fa-star'))) {
+                link.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    filterImportantTasks();
+                    console.log('Important filter activated');
+                });
+            } else if (text === 'Inbox' || (icon && icon.classList.contains('fa-inbox'))) {
+                link.addEventListener("click", function(e) {
+                    e.preventDefault();
+                    showAllTasks("Inbox");
+                    console.log('Inbox (all tasks) filter activated');
+                });
+            }
         });
     }
+
+
+
+
     function filterTodayTasks() {
         updatePageTitle("Today");
 
@@ -952,18 +988,57 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
 
+// Enhanced showAllTasks function to ensure it shows ALL tasks
     function showAllTasks(viewTitle) {
         updatePageTitle(viewTitle);
 
-        // Show all task elements
+        console.log(`📥 Showing all tasks for ${viewTitle}. Total tasks: ${tasks.length}`);
+
+        // Clear any existing active states
+        document.querySelectorAll('.list-name').forEach(el => {
+            el.classList.remove('active');
+        });
+
+        // Show all task elements by iterating through the tasks array
+        let shownTasksCount = 0;
         tasks.forEach(task => {
             const taskElement = document.querySelector(`li[data-id="${task.id}"]`);
             if (taskElement) {
                 taskElement.style.display = "flex";
+                shownTasksCount++;
             }
         });
 
+        console.log(`✅ Displayed ${shownTasksCount} out of ${tasks.length} tasks in ${viewTitle}`);
+
+        // Remove any "no tasks" message since we're showing all tasks
         removeNoTasksMessage();
+
+        // If no tasks are shown but we have tasks in the array, re-render
+        if (shownTasksCount === 0 && tasks.length > 0) {
+            console.log('⚠️ No tasks displayed but tasks exist in array. Re-rendering...');
+            renderTasks();
+        }
+    }
+// Debug function to check navigation setup
+    function debugNavigation() {
+        console.log('🔍 Debug Navigation Setup:');
+
+        const firstMenuSection = document.querySelector(".menu");
+        const menuLinks = firstMenuSection.querySelectorAll("a");
+
+        console.log(`Found ${menuLinks.length} navigation links:`);
+
+        menuLinks.forEach((link, index) => {
+            const text = link.textContent.trim();
+            const icon = link.querySelector('i');
+            const iconClass = icon ? icon.className : 'No icon';
+
+            console.log(`${index + 1}. "${text}" - Icon: ${iconClass}`);
+        });
+
+        console.log('Total tasks in array:', tasks.length);
+        console.log('Tasks:', tasks.map(t => ({ id: t.id, title: t.title, completed: t.completed })));
     }
 
 // Updated utility functions that were causing issues
