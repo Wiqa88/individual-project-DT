@@ -5,6 +5,9 @@
 let tasks = [];
 let lists = [];
 
+
+
+
 // Wait for DOM to be fully loaded before executing any code
 document.addEventListener("DOMContentLoaded", function() {
     console.log('🚀 Starting TODO app with user-specific storage...');
