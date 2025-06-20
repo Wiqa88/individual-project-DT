@@ -243,9 +243,23 @@ document.addEventListener("DOMContentLoaded", function() {
         console.log(`✅ Task added successfully for ${window.userDataManager.currentUser.email}`);
         showTaskNotification('Task added successfully!', 'success');
     }
+    // Enhanced deleteTask function with calendar sync
     function deleteTask(taskId, taskElement) {
         if (confirm("Are you sure you want to delete this task?")) {
-            console.log(`🗑️ Deleting task ${taskId} for ${window.userDataManager.currentUser.email}`);
+            console.log(`🗑️ TODO: Starting deletion of task ${taskId}...`);
+
+            // Find the task to check for calendar associations
+            const taskToDelete = tasks.find(t => t.id === taskId);
+
+            if (taskToDelete && (taskToDelete.hasAssociatedEvent || taskToDelete.sourceEventId || taskToDelete.associatedEventId)) {
+                const confirmCalendarDelete = confirm(
+                    "This task is linked to a calendar event. Would you like to delete the calendar event as well?"
+                );
+
+                if (confirmCalendarDelete) {
+                    deleteAssociatedCalendarEvent(taskToDelete);
+                }
+            }
 
             // Remove from tasks array
             const originalLength = tasks.length;
@@ -261,6 +275,35 @@ document.addEventListener("DOMContentLoaded", function() {
             showTaskNotification('Task deleted successfully!', 'success');
         }
     }
+    async function deleteAssociatedCalendarEvent(task) {
+        const eventId = task.sourceEventId || task.associatedEventId;
+        if (!eventId) return;
+
+        try {
+            if (window.taskDB && window.taskDB.isReady) {
+                await window.taskDB.deleteEvent(eventId);
+                console.log('✅ TODO: Associated calendar event deleted from database');
+            } else {
+                // Delete from localStorage
+                let calendarEvents = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+                calendarEvents = calendarEvents.filter(e => e.id != eventId);
+                localStorage.setItem('calendar-events', JSON.stringify(calendarEvents));
+
+                // Trigger storage event
+                window.dispatchEvent(new StorageEvent('storage', {
+                    key: 'calendar-events',
+                    newValue: JSON.stringify(calendarEvents)
+                }));
+
+                console.log('✅ TODO: Associated calendar event deleted from localStorage');
+            }
+            showTaskNotification('Task and calendar event deleted!', 'success');
+        } catch (error) {
+            console.error('❌ TODO: Failed to delete associated calendar event:', error);
+            showTaskNotification('Task deleted, but failed to delete calendar event', 'warning');
+        }
+    }
+
 
     function debugNavigationAfterSort() {
         console.log('🧪 Testing navigation after sorting...');
@@ -354,9 +397,126 @@ document.addEventListener("DOMContentLoaded", function() {
             if (taskIndex !== -1) {
                 tasks[taskIndex].completed = task.completed;
                 saveTasks();
+
+                // Sync completion status to calendar if linked
+                syncTaskCompletionToCalendar(tasks[taskIndex]);
             }
         }, { once: true });
     }
+
+    async function syncTaskCompletionToCalendar(task) {
+        if (!task.hasAssociatedEvent && !task.sourceEventId && !task.associatedEventId) {
+            return;
+        }
+
+        const eventId = task.sourceEventId || task.associatedEventId;
+        if (!eventId) return;
+
+        try {
+            if (window.taskDB && window.taskDB.isReady) {
+                const event = await window.taskDB.getEventById(eventId);
+                if (event) {
+                    // You could add a completed property to events or handle this differently
+                    const updatedEvent = {
+                        ...event,
+                        taskCompleted: task.completed,
+                        lastTaskUpdate: new Date().toISOString()
+                    };
+                    await window.taskDB.updateEvent(updatedEvent);
+                }
+            } else {
+                // Update in localStorage
+                let calendarEvents = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+                const eventIndex = calendarEvents.findIndex(e => e.id == eventId);
+
+                if (eventIndex !== -1) {
+                    calendarEvents[eventIndex] = {
+                        ...calendarEvents[eventIndex],
+                        taskCompleted: task.completed,
+                        lastTaskUpdate: new Date().toISOString()
+                    };
+                    localStorage.setItem('calendar-events', JSON.stringify(calendarEvents));
+
+                    window.dispatchEvent(new StorageEvent('storage', {
+                        key: 'calendar-events',
+                        newValue: JSON.stringify(calendarEvents)
+                    }));
+                }
+            }
+
+            console.log(`✅ TODO: Task completion synced to calendar (${task.completed ? 'completed' : 'uncompleted'})`);
+        } catch (error) {
+            console.error('❌ TODO: Failed to sync task completion to calendar:', error);
+        }
+    }
+
+// Listen for calendar event changes and update linked tasks
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'calendar-events') {
+            console.log('🔄 TODO: Calendar events updated, checking for linked tasks...');
+            syncCalendarChangesToTasks();
+        }
+    });
+
+    // Function to sync calendar changes back to tasks
+    function syncCalendarChangesToTasks() {
+        if (!window.userDataManager || !window.userDataManager.currentUser) {
+            return;
+        }
+
+        try {
+            const calendarEvents = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+            let tasksUpdated = false;
+
+            tasks.forEach((task, index) => {
+                if (task.hasAssociatedEvent || task.sourceEventId || task.associatedEventId) {
+                    const eventId = task.sourceEventId || task.associatedEventId;
+                    const linkedEvent = calendarEvents.find(e => e.id == eventId);
+
+                    if (linkedEvent) {
+                        // Check if event was updated and sync changes
+                        if (linkedEvent.title !== task.title ||
+                            linkedEvent.description !== task.description ||
+                            linkedEvent.date !== task.date ||
+                            linkedEvent.priority !== task.priority) {
+
+                            console.log(`🔄 TODO: Syncing calendar changes to task ${task.id}`);
+
+                            tasks[index] = {
+                                ...task,
+                                title: linkedEvent.title,
+                                description: linkedEvent.description || task.description,
+                                date: linkedEvent.date || task.date,
+                                priority: linkedEvent.priority || task.priority,
+                                list: linkedEvent.list !== null ? linkedEvent.list : task.list
+                            };
+
+                            tasksUpdated = true;
+                        }
+                    } else {
+                        // Calendar event was deleted, mark task as no longer linked
+                        console.log(`⚠️ TODO: Calendar event ${eventId} deleted, unlinking task ${task.id}`);
+                        tasks[index] = {
+                            ...task,
+                            hasAssociatedEvent: false,
+                            sourceEventId: null,
+                            associatedEventId: null
+                        };
+                        tasksUpdated = true;
+                    }
+                }
+            });
+
+            if (tasksUpdated) {
+                saveTasks();
+                refreshCurrentView();
+                console.log('✅ TODO: Tasks synced with calendar changes');
+            }
+        } catch (error) {
+            console.error('❌ TODO: Failed to sync calendar changes to tasks:', error);
+        }
+    }
+
 
     function clearTaskForm() {
         taskTitle.value = '';
@@ -436,6 +596,93 @@ document.addEventListener("DOMContentLoaded", function() {
 
         console.log(`✅ Rendered ${sortedTasks.length} task elements (default view)`);
     }
+
+
+    // Add visual indicator for tasks linked to calendar events
+    function createTaskElement(task) {
+        const taskItem = document.createElement("li");
+
+        // Fixed priority colors - using lowercase keys to match stored values
+        const priorityColors = {
+            'high': '#ff5555',    // Red for high priority
+            'medium': '#ffa500',  // Orange for medium priority
+            'low': '#1e3a8a',     // Blue for low priority
+            'N/A': '#1e3a8a'      // Blue for no priority
+        };
+
+        // Use task.priority directly (it's stored in lowercase)
+        taskItem.style.borderLeftColor = priorityColors[task.priority] || '#1e3a8a';
+
+        // Add calendar link indicator
+        if (task.hasAssociatedEvent || task.sourceEventId || task.associatedEventId) {
+            taskItem.style.borderLeft = `4px solid #10b981`; // Green for calendar-linked tasks
+            taskItem.title = "This task is linked to a calendar event";
+
+            // Add calendar icon
+            const calendarIcon = document.createElement('i');
+            calendarIcon.className = 'fas fa-calendar-alt';
+            calendarIcon.style.cssText = `
+            position: absolute;
+            top: 8px;
+            right: 40px;
+            color: #10b981;
+            font-size: 14px;
+            z-index: 5;
+        `;
+            taskItem.style.position = 'relative';
+            taskItem.appendChild(calendarIcon);
+        }
+
+        if (task.completed) {
+            taskItem.style.opacity = '0.6';
+        }
+
+        const taskItemInner = document.createElement("div");
+        taskItemInner.className = "task-item";
+
+        const taskRing = document.createElement("div");
+        taskRing.className = task.completed ? "task-ring completed" : "task-ring";
+        taskRing.addEventListener("click", function () {
+            toggleTaskCompletion(task, taskRing, taskItem);
+        });
+
+        const taskContent = document.createElement("div");
+        taskContent.style.width = "100%";
+
+        const formattedDueDate = formatDate(task.date);
+        const formattedReminderDate = formatDate(task.reminder);
+
+        const titleDiv = createEditableField('title', task.title, 'task-title', task);
+        const descDiv = createEditableField('description', task.description, 'task-desc', task);
+
+        const metadata = document.createElement("div");
+        metadata.classList.add("task-metadata");
+
+        const dateDiv = createEditableField('date', formattedDueDate, '', task, 'Date: ');
+        const reminderDiv = createEditableField('reminder', formattedReminderDate, '', task, 'Reminder: ');
+        const priorityDiv = createEditableSelectField('priority', task.priority, task, ['low', 'medium', 'high'], 'Priority: ');
+        const listDiv = createEditableSelectField('list', task.list, task, ['N/A', ...lists], 'List: ');
+
+        taskItem.dataset.id = task.id;
+
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "×";
+        deleteButton.className = "delete-task";
+        deleteButton.addEventListener("click", function () {
+            deleteTask(task.id, taskItem);
+        });
+
+        metadata.append(dateDiv, reminderDiv, priorityDiv, listDiv);
+        taskContent.append(titleDiv, descDiv, metadata);
+
+        taskItemInner.append(taskRing, taskContent);
+        taskItem.append(taskItemInner, deleteButton);
+
+        return taskItem;
+    }
+
+    console.log('✅ TODO: Enhanced calendar-task syncing loaded');
+
 
     function createTaskElement(task) {
         const taskItem = document.createElement("li");
@@ -1566,6 +1813,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
         return containerDiv;
     }
+    // ENHANCED todo.js - Add this to your existing todo.js file
+// This adds proper calendar-task syncing functionality
+
+// Add this enhanced saveFieldEdit function to replace your existing one
     function saveFieldEdit(fieldName, value, task, displayElement, prefix = '') {
         const originalValue = task[fieldName];
 
@@ -1627,9 +1878,84 @@ document.addEventListener("DOMContentLoaded", function() {
             if (taskIndex !== -1) {
                 tasks[taskIndex][fieldName] = value;
                 saveTasks();
+
+                // CRITICAL: Sync with calendar if this task is linked to an event
+                syncTaskToCalendarEvent(tasks[taskIndex]);
             }
         }
     }
+
+    async function syncTaskToCalendarEvent(task) {
+        // Only sync if this task is linked to a calendar event
+        if (!task.hasAssociatedEvent && !task.sourceEventId && !task.associatedEventId) {
+            return;
+        }
+
+        const eventId = task.sourceEventId || task.associatedEventId;
+        if (!eventId) {
+            return;
+        }
+
+        console.log(`🔄 TODO: Syncing task changes to calendar event ${eventId}...`);
+
+        try {
+            // Try database sync first
+            if (window.taskDB && window.taskDB.isReady) {
+                const event = await window.taskDB.getEventById(eventId);
+                if (event) {
+                    // Update event with task changes
+                    const updatedEvent = {
+                        ...event,
+                        title: task.title,
+                        description: task.description,
+                        date: task.date || event.date,
+                        priority: task.priority || event.priority,
+                        list: task.list !== 'N/A' ? task.list : event.list
+                    };
+
+                    await window.taskDB.updateEvent(updatedEvent);
+                    console.log('✅ TODO: Event updated in database');
+                    showTaskNotification('Task and calendar event synced!', 'success');
+                }
+            } else {
+                // Fallback to localStorage sync
+                console.log('📱 TODO: Using localStorage sync...');
+
+                let calendarEvents = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+                const eventIndex = calendarEvents.findIndex(e => e.id == eventId);
+
+                if (eventIndex !== -1) {
+                    // Update the calendar event with task changes
+                    calendarEvents[eventIndex] = {
+                        ...calendarEvents[eventIndex],
+                        title: task.title,
+                        description: task.description,
+                        date: task.date || calendarEvents[eventIndex].date,
+                        priority: task.priority || calendarEvents[eventIndex].priority,
+                        list: task.list !== 'N/A' ? task.list : calendarEvents[eventIndex].list
+                    };
+
+                    localStorage.setItem('calendar-events', JSON.stringify(calendarEvents));
+
+                    // Trigger storage event to update calendar page in real-time
+                    window.dispatchEvent(new StorageEvent('storage', {
+                        key: 'calendar-events',
+                        newValue: JSON.stringify(calendarEvents)
+                    }));
+
+                    console.log('✅ TODO: Calendar event synced via localStorage');
+                    showTaskNotification('Changes synced to calendar!', 'success');
+                } else {
+                    console.log('⚠️ TODO: Associated calendar event not found');
+                }
+            }
+        } catch (error) {
+            console.error('❌ TODO: Failed to sync task to calendar:', error);
+            showTaskNotification('Failed to sync with calendar', 'warning');
+        }
+    }
+
+
 
     // ----------------------
     // Utility Functions

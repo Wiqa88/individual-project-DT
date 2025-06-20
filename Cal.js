@@ -525,8 +525,6 @@ async function deleteSelectedEvent() {
         }
     }
 }
-
-// Also fix the saveEvent function to properly link tasks and events:
 async function saveEvent() {
     const titleInput = document.getElementById('event-title');
     const dateInput = document.getElementById('event-date');
@@ -551,8 +549,11 @@ async function saveEvent() {
 
     console.log('💾 CALENDAR: Saving new event...');
 
-    // Create event
-    const newEvent = {
+    // Check if we're editing an existing event
+    const isEditing = selectedEvent && selectedEvent.id;
+
+    // Create event object
+    const eventData = {
         title: titleInput.value.trim(),
         date: dateInput.value,
         time: timeInput ? timeInput.value || null : null,
@@ -561,104 +562,65 @@ async function saveEvent() {
         description: descriptionInput ? descriptionInput.value.trim() : '',
         list: listSelect && listSelect.value !== 'none' ? listSelect.value : null,
         priority: prioritySelect && prioritySelect.value !== 'none' ? prioritySelect.value : null,
-        createdAt: new Date().toISOString()
+        lastUpdated: new Date().toISOString()
     };
+
+    // If editing, preserve existing properties
+    if (isEditing) {
+        eventData.id = selectedEvent.id;
+        eventData.createdAt = selectedEvent.createdAt;
+        eventData.hasAssociatedTask = selectedEvent.hasAssociatedTask;
+        eventData.associatedTaskId = selectedEvent.associatedTaskId;
+        eventData.taskCompleted = selectedEvent.taskCompleted;
+    } else {
+        eventData.createdAt = new Date().toISOString();
+    }
 
     try {
         let eventId;
 
-        // Save to database
-        if (window.taskDB && window.taskDB.isReady) {
-            eventId = await window.taskDB.addEvent(newEvent);
-            newEvent.id = eventId;
-            console.log('✅ CALENDAR: Event saved to database with ID:', eventId);
-            showCalendarNotification('Event saved to database!', 'success');
+        if (isEditing) {
+            // Update existing event
+            eventId = selectedEvent.id;
+
+            if (window.taskDB && window.taskDB.isReady) {
+                await window.taskDB.updateEvent(eventData);
+                console.log('✅ CALENDAR: Event updated in database');
+            } else {
+                // Update in localStorage
+                const eventIndex = events.findIndex(e => e.id === eventId);
+                if (eventIndex !== -1) {
+                    events[eventIndex] = eventData;
+                }
+            }
+
+            // Update associated task if it exists
+            if (selectedEvent.hasAssociatedTask || selectedEvent.associatedTaskId) {
+                await updateAssociatedTask(eventData);
+            }
+
+            showCalendarNotification('Event updated successfully!', 'success');
         } else {
-            // Fallback to localStorage
-            eventId = Date.now();
-            newEvent.id = eventId;
-            console.log('📱 CALENDAR: Event saved to localStorage with ID:', eventId);
-            showCalendarNotification('Event saved locally!', 'warning');
+            // Create new event
+            if (window.taskDB && window.taskDB.isReady) {
+                eventId = await window.taskDB.addEvent(eventData);
+                eventData.id = eventId;
+                console.log('✅ CALENDAR: Event saved to database with ID:', eventId);
+            } else {
+                eventId = Date.now();
+                eventData.id = eventId;
+                console.log('📱 CALENDAR: Event saved to localStorage with ID:', eventId);
+            }
+
+            // Add to local array for UI
+            events.push(eventData);
+            showCalendarNotification('Event created successfully!', 'success');
         }
 
-        // Add to local array for UI
-        events.push(newEvent);
-
-        // Handle "Add as Task" with proper linking
-        if (addAsTask && addAsTask.checked) {
+        // Handle "Add as Task" for new events only
+        if (!isEditing && addAsTask && addAsTask.checked) {
             console.log('📝 CALENDAR: Creating associated task for event...');
-
-            try {
-                let taskId;
-
-                if (window.taskDB && window.taskDB.isReady) {
-                    // Create task using database
-                    const newTask = {
-                        title: titleInput.value.trim(),
-                        description: descriptionInput ? descriptionInput.value.trim() : '',
-                        date: dateInput.value,
-                        reminder: dateInput.value,
-                        priority: prioritySelect && prioritySelect.value !== 'none' ? prioritySelect.value : 'medium',
-                        list: listSelect && listSelect.value !== 'none' ? listSelect.value : 'N/A',
-                        completed: false,
-                        subtasks: [],
-                        createdFromEvent: true,
-                        sourceEventId: eventId,
-                        hasAssociatedEvent: true,
-                        associatedEventId: eventId
-                    };
-
-                    taskId = await window.taskDB.addTask(newTask);
-
-                    // Update the event to link back to the task
-                    newEvent.hasAssociatedTask = true;
-                    newEvent.associatedTaskId = taskId;
-                    await window.taskDB.updateEvent(newEvent);
-
-                    console.log(`🔗 CALENDAR: Created task ${taskId} and linked with event ${eventId}`);
-                    showCalendarNotification('Event and task created successfully!', 'success');
-                } else {
-                    // Fallback task creation with proper linking
-                    taskId = Date.now() + 1;
-                    const newTask = {
-                        id: taskId,
-                        title: titleInput.value.trim(),
-                        description: descriptionInput ? descriptionInput.value.trim() : '',
-                        date: dateInput.value,
-                        reminder: dateInput.value,
-                        priority: prioritySelect && prioritySelect.value !== 'none' ? prioritySelect.value : 'medium',
-                        list: listSelect && listSelect.value !== 'none' ? listSelect.value : 'N/A',
-                        completed: false,
-                        subtasks: [],
-                        createdFromEvent: true,
-                        sourceEventId: eventId,
-                        hasAssociatedEvent: true,
-                        associatedEventId: eventId,
-                        createdAt: new Date().toISOString()
-                    };
-
-                    const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-                    existingTasks.push(newTask);
-                    localStorage.setItem('tasks', JSON.stringify(existingTasks));
-
-                    // Update the event to link back to the task
-                    newEvent.hasAssociatedTask = true;
-                    newEvent.associatedTaskId = taskId;
-
-                    console.log(`🔗 CALENDAR: Created task ${taskId} and linked with event ${eventId}`);
-
-                    // Trigger storage event for todo page
-                    window.dispatchEvent(new StorageEvent('storage', {
-                        key: 'tasks',
-                        newValue: JSON.stringify(existingTasks)
-                    }));
-
-                    showCalendarNotification('Event and task created locally!', 'warning');
-                }
-            } catch (taskError) {
-                console.error('❌ CALENDAR: Failed to create associated task:', taskError);
-                showCalendarNotification('Event created, but failed to create associated task', 'warning');
-            }
+            await createAssociatedTask(eventData);
         }
 
         // Save to localStorage as backup
@@ -672,21 +634,16 @@ async function saveEvent() {
 
         closeAllModals();
         updateCalendarView();
+        selectedEvent = null; // Clear selection
 
     } catch (error) {
         console.error('❌ CALENDAR: Failed to save event:', error);
         showCalendarNotification('Failed to save event', 'error');
-
-        // Still add to local array as fallback
-        newEvent.id = Date.now();
-        events.push(newEvent);
-        saveEventsToLocalStorage();
-        updateCalendarView();
     }
 }
 
-
-// REPLACE WITH THIS NEW CODE:
+//wiqas
+// Enhanced storage event listener for real-time sync
 window.addEventListener('storage', function(e) {
     if (e.key === 'calendar-events') {
         console.log('🔄 CALENDAR: Storage event received for calendar-events');
@@ -714,12 +671,207 @@ window.addEventListener('storage', function(e) {
         }
     }
 
-    // Also listen for task changes to update any task-related displays
+    // Listen for task changes and sync to linked events
     if (e.key === 'tasks') {
-        console.log('🔄 CALENDAR: Tasks updated in another page');
-        // You can add task-related updates here if needed
+        console.log('🔄 CALENDAR: Tasks updated, syncing to linked events...');
+        syncTaskChangesToEvents();
     }
 });
+
+async function updateAssociatedTask(event) {
+    const taskId = event.associatedTaskId;
+    if (!taskId) return;
+
+    try {
+        if (window.taskDB && window.taskDB.isReady) {
+            const task = await window.taskDB.getTaskById(taskId);
+            if (task) {
+                const updatedTask = {
+                    ...task,
+                    title: event.title,
+                    description: event.description,
+                    date: event.date,
+                    priority: event.priority || task.priority,
+                    list: event.list !== null ? event.list : task.list
+                };
+                await window.taskDB.updateTask(updatedTask);
+                console.log('✅ CALENDAR: Associated task updated in database');
+            }
+        } else {
+            // Update in localStorage
+            let tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+            const taskIndex = tasks.findIndex(t => t.id == taskId);
+
+            if (taskIndex !== -1) {
+                tasks[taskIndex] = {
+                    ...tasks[taskIndex],
+                    title: event.title,
+                    description: event.description,
+                    date: event.date,
+                    priority: event.priority || tasks[taskIndex].priority,
+                    list: event.list !== null ? event.list : tasks[taskIndex].list
+                };
+
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+
+                // Trigger storage event
+                window.dispatchEvent(new StorageEvent('storage', {
+                    key: 'tasks',
+                    newValue: JSON.stringify(tasks)
+                }));
+
+                console.log('✅ CALENDAR: Associated task updated in localStorage');
+            }
+        }
+
+        showCalendarNotification('Event and linked task updated!', 'success');
+    } catch (error) {
+        console.error('❌ CALENDAR: Failed to update associated task:', error);
+        showCalendarNotification('Event updated, but failed to update linked task', 'warning');
+    }
+}
+
+async function createAssociatedTask(event) {
+    try {
+        let taskId;
+
+        if (window.taskDB && window.taskDB.isReady) {
+            // Create task using database
+            const newTask = {
+                title: event.title,
+                description: event.description || '',
+                date: event.date,
+                reminder: event.date,
+                priority: event.priority || 'medium',
+                list: event.list || 'N/A',
+                completed: false,
+                subtasks: [],
+                createdFromEvent: true,
+                sourceEventId: event.id,
+                hasAssociatedEvent: true,
+                associatedEventId: event.id
+            };
+
+            taskId = await window.taskDB.addTask(newTask);
+
+            // Update the event to link back to the task
+            event.hasAssociatedTask = true;
+            event.associatedTaskId = taskId;
+            await window.taskDB.updateEvent(event);
+
+            console.log(`🔗 CALENDAR: Created task ${taskId} and linked with event ${event.id}`);
+            showCalendarNotification('Event and task created successfully!', 'success');
+        } else {
+            // Fallback task creation with proper linking
+            taskId = Date.now() + 1;
+            const newTask = {
+                id: taskId,
+                title: event.title,
+                description: event.description || '',
+                date: event.date,
+                reminder: event.date,
+                priority: event.priority || 'medium',
+                list: event.list || 'N/A',
+                completed: false,
+                subtasks: [],
+                createdFromEvent: true,
+                sourceEventId: event.id,
+                hasAssociatedEvent: true,
+                associatedEventId: event.id,
+                createdAt: new Date().toISOString()
+            };
+
+            const existingTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+            existingTasks.push(newTask);
+            localStorage.setItem('tasks', JSON.stringify(existingTasks));
+
+            // Update the event to link back to the task
+            event.hasAssociatedTask = true;
+            event.associatedTaskId = taskId;
+
+            // Update the event in the events array
+            const eventIndex = events.findIndex(e => e.id === event.id);
+            if (eventIndex !== -1) {
+                events[eventIndex] = event;
+            }
+
+            console.log(`🔗 CALENDAR: Created task ${taskId} and linked with event ${event.id}`);
+
+            // Trigger storage event for todo page
+            window.dispatchEvent(new StorageEvent('storage', {
+                key: 'tasks',
+                newValue: JSON.stringify(existingTasks)
+            }));
+
+            showCalendarNotification('Event and task created locally!', 'success');
+        }
+    } catch (taskError) {
+        console.error('❌ CALENDAR: Failed to create associated task:', taskError);
+        showCalendarNotification('Event created, but failed to create associated task', 'warning');
+    }
+}
+
+
+// Function to sync task changes to calendar events
+function syncTaskChangesToEvents() {
+    try {
+        const updatedTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+        let eventsUpdated = false;
+
+        events.forEach((event, index) => {
+            if (event.hasAssociatedTask || event.associatedTaskId) {
+                const linkedTask = updatedTasks.find(t =>
+                    t.id == event.associatedTaskId ||
+                    t.sourceEventId == event.id ||
+                    t.associatedEventId == event.id
+                );
+
+                if (linkedTask) {
+                    // Check if task was updated and sync changes
+                    if (linkedTask.title !== event.title ||
+                        linkedTask.description !== event.description ||
+                        linkedTask.date !== event.date ||
+                        linkedTask.priority !== event.priority ||
+                        (linkedTask.list !== 'N/A' && linkedTask.list !== event.list)) {
+
+                        console.log(`🔄 CALENDAR: Syncing task changes to event ${event.id}`);
+
+                        events[index] = {
+                            ...event,
+                            title: linkedTask.title,
+                            description: linkedTask.description || event.description,
+                            date: linkedTask.date || event.date,
+                            priority: linkedTask.priority || event.priority,
+                            list: linkedTask.list !== 'N/A' ? linkedTask.list : event.list,
+                            taskCompleted: linkedTask.completed,
+                            lastTaskUpdate: new Date().toISOString()
+                        };
+
+                        eventsUpdated = true;
+                    }
+                } else {
+                    // Task was deleted, mark event as no longer linked
+                    console.log(`⚠️ CALENDAR: Task ${event.associatedTaskId} deleted, unlinking event ${event.id}`);
+                    events[index] = {
+                        ...event,
+                        hasAssociatedTask: false,
+                        associatedTaskId: null,
+                        taskCompleted: null
+                    };
+                    eventsUpdated = true;
+                }
+            }
+        });
+
+        if (eventsUpdated) {
+            saveEventsToLocalStorage();
+            updateCalendarView();
+            console.log('✅ CALENDAR: Events synced with task changes');
+        }
+    } catch (error) {
+        console.error('❌ CALENDAR: Failed to sync task changes to events:', error);
+    }
+}
 
 // ALSO ADD THIS FUNCTION TO PREVENT DUPLICATE NOTIFICATIONS:
 
@@ -1406,8 +1558,6 @@ function renderMiniCalendar() {
         miniCalendarDays.appendChild(dayElement);
     }
 }
-
-// Event creation and management
 function createEventElement(event) {
     const eventElement = document.createElement('div');
     eventElement.className = 'event';
@@ -1423,7 +1573,32 @@ function createEventElement(event) {
         titleText = `${formatTime(event.time)} ${titleText}`;
     }
 
-    eventElement.textContent = titleText;
+    // Add task completion indicator
+    if (event.hasAssociatedTask || event.associatedTaskId) {
+        const taskIcon = document.createElement('i');
+        taskIcon.className = event.taskCompleted ? 'fas fa-check-circle' : 'fas fa-tasks';
+        taskIcon.style.cssText = `
+            margin-right: 5px;
+            opacity: 0.8;
+            font-size: 12px;
+        `;
+
+        const titleContainer = document.createElement('div');
+        titleContainer.style.display = 'flex';
+        titleContainer.style.alignItems = 'center';
+        titleContainer.appendChild(taskIcon);
+        titleContainer.appendChild(document.createTextNode(titleText));
+
+        eventElement.appendChild(titleContainer);
+
+        // Add strikethrough effect if task is completed
+        if (event.taskCompleted) {
+            eventElement.style.textDecoration = 'line-through';
+            eventElement.style.opacity = '0.7';
+        }
+    } else {
+        eventElement.textContent = titleText;
+    }
 
     // Add click handler to show details
     eventElement.addEventListener('click', function(e) {
@@ -1433,12 +1608,21 @@ function createEventElement(event) {
 
     return eventElement;
 }
-
 function createWeekDayEvent(event, isDayView = false) {
     if (!event.time) {
         // All-day event - show at top
         const eventElement = document.createElement('div');
         eventElement.className = isDayView ? 'day-event all-day' : 'week-event all-day';
+
+        // Add task completion styling
+        if (event.hasAssociatedTask || event.associatedTaskId) {
+            if (event.taskCompleted) {
+                eventElement.style.textDecoration = 'line-through';
+                eventElement.style.opacity = '0.7';
+            }
+            eventElement.title = `Linked to task${event.taskCompleted ? ' (completed)' : ''}`;
+        }
+
         eventElement.textContent = event.title;
         eventElement.style.top = '0px';
         eventElement.style.height = '20px';
@@ -1489,6 +1673,27 @@ function createWeekDayEvent(event, isDayView = false) {
     eventElement.style.textOverflow = 'ellipsis';
     eventElement.style.whiteSpace = 'nowrap';
 
+    // Add task completion styling
+    if (event.hasAssociatedTask || event.associatedTaskId) {
+        if (event.taskCompleted) {
+            eventElement.style.textDecoration = 'line-through';
+            eventElement.style.opacity = '0.7';
+        }
+        eventElement.title = `Linked to task${event.taskCompleted ? ' (completed)' : ''}`;
+
+        // Add small task icon
+        const taskIcon = document.createElement('div');
+        taskIcon.innerHTML = event.taskCompleted ? '✓' : '📋';
+        taskIcon.style.cssText = `
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 8px;
+            opacity: 0.8;
+        `;
+        eventElement.appendChild(taskIcon);
+    }
+
     // Set priority border if applicable
     if (event.priority) {
         switch(event.priority) {
@@ -1511,6 +1716,7 @@ function createWeekDayEvent(event, isDayView = false) {
 
     return eventElement;
 }
+
 
 // Modal functions
 function showAddEventModal(date = null) {
@@ -1628,7 +1834,6 @@ function showEventDetails(event) {
 
     modal.style.display = 'flex';
 }
-
 function editSelectedEvent() {
     if (!selectedEvent) return;
 
@@ -1644,6 +1849,7 @@ function editSelectedEvent() {
     const descriptionInput = document.getElementById('event-description');
     const listSelect = document.getElementById('event-list');
     const prioritySelect = document.getElementById('event-priority');
+    const addAsTask = document.getElementById('add-as-task');
 
     if (titleInput) titleInput.value = selectedEvent.title;
     if (dateInput) dateInput.value = selectedEvent.date;
@@ -1654,37 +1860,27 @@ function editSelectedEvent() {
     if (listSelect) listSelect.value = selectedEvent.list || 'none';
     if (prioritySelect) prioritySelect.value = selectedEvent.priority || 'none';
 
-    // Change save button functionality temporarily
-    const saveButton = document.getElementById('save-event');
-    if (saveButton) {
-        const originalHandler = saveButton.onclick;
+    // Hide "Add as Task" checkbox if event already has a linked task
+    if (addAsTask) {
+        if (selectedEvent.hasAssociatedTask || selectedEvent.associatedTaskId) {
+            addAsTask.parentElement.style.display = 'none';
+        } else {
+            addAsTask.parentElement.style.display = 'block';
+            addAsTask.checked = false;
+        }
+    }
 
-        saveButton.onclick = function() {
-            // Update the existing event
-            const eventIndex = events.findIndex(e => e.id === selectedEvent.id);
-            if (eventIndex !== -1) {
-                events[eventIndex] = {
-                    ...selectedEvent,
-                    title: titleInput ? titleInput.value.trim() : selectedEvent.title,
-                    date: dateInput ? dateInput.value : selectedEvent.date,
-                    time: timeInput ? timeInput.value || null : selectedEvent.time,
-                    endDate: endDateInput ? endDateInput.value || dateInput.value : selectedEvent.endDate,
-                    endTime: endTimeInput ? endTimeInput.value || null : selectedEvent.endTime,
-                    description: descriptionInput ? descriptionInput.value.trim() : selectedEvent.description,
-                    list: listSelect && listSelect.value !== 'none' ? listSelect.value : null,
-                    priority: prioritySelect && prioritySelect.value !== 'none' ? prioritySelect.value : null
-                };
-            }
-
-            saveEventsToLocalStorage();
-            closeAllModals();
-            updateCalendarView();
-
-            // Restore original handler
-            saveButton.onclick = originalHandler;
-        };
+    // Update modal title to indicate editing
+    const modalTitle = document.querySelector('#event-modal .modal-header h2');
+    if (modalTitle) {
+        modalTitle.textContent = 'Edit Event';
+        if (selectedEvent.hasAssociatedTask || selectedEvent.associatedTaskId) {
+            modalTitle.innerHTML += ' <i class="fas fa-link" style="color: #10b981; margin-left: 8px;" title="Linked to task"></i>';
+        }
     }
 }
+
+console.log('✅ CALENDAR: Enhanced task-event syncing loaded');
 
 // List management
 function addNewList() {
