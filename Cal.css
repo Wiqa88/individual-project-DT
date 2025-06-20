@@ -1089,7 +1089,275 @@ main {
     border: 1px solid #e9ecef;
 }
 
-/* Responsive Design */
+
+/* Task linked to calendar event styling */
+.task-item.calendar-linked {
+    border-left: 4px solid #10b981 !important;
+    background: linear-gradient(to right, rgba(16, 185, 129, 0.05), transparent 50px);
+}
+
+.task-item.calendar-linked::before {
+    content: "📅";
+    position: absolute;
+    top: 8px;
+    right: 45px;
+    font-size: 14px;
+    opacity: 0.7;
+    z-index: 5;
+}
+
+/* Calendar event linked to task styling */
+.event.task-linked {
+    border-left: 3px solid #10b981 !important;
+    position: relative;
+}
+
+.event.task-linked::after {
+    content: "📋";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 10px;
+    opacity: 0.8;
+}
+
+.event.task-completed {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+.event.task-completed::after {
+    content: "✅";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 10px;
+}
+
+/* Week view event enhancements */
+.week-event.task-linked,
+.day-event.task-linked {
+    border-left: 3px solid #10b981 !important;
+}
+
+.week-event.task-completed,
+.day-event.task-completed {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* Sync notification styles */
+.sync-notification {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 1001;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    border-left: 4px solid #065f46;
+}
+
+.sync-notification.show {
+    transform: translateX(0);
+}
+
+.sync-notification::before {
+    content: "🔄";
+    margin-right: 8px;
+}
+
+/* Enhanced modal styling for linked events/tasks */
+.modal-content.has-link {
+    border-top: 4px solid #10b981;
+}
+
+.modal-header.has-link {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent);
+}
+
+/* Task metadata enhancements for linked items */
+.task-metadata .calendar-link {
+    background: rgba(16, 185, 129, 0.1);
+    color: #065f46;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.task-metadata .calendar-link::before {
+    content: "📅 ";
+    margin-right: 2px;
+}
+
+/* Event details modal enhancements */
+.event-detail.has-task {
+    background: rgba(16, 185, 129, 0.05);
+    border-left: 3px solid #10b981;
+    padding-left: 12px;
+    margin-left: -12px;
+}
+
+/* Pulse animation for sync indicators */
+@keyframes sync-pulse {
+    0% { opacity: 0.7; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+    100% { opacity: 0.7; transform: scale(1); }
+}
+
+.syncing {
+    animation: sync-pulse 1.5s infinite;
+}
+
+/* Loading state for sync operations */
+.sync-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.sync-loading::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(16, 185, 129, 0.3),
+            transparent
+    );
+    animation: sync-loading 1.5s infinite;
+}
+
+@keyframes sync-loading {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* Enhanced priority indicators for linked items */
+.priority-high.calendar-linked {
+    border-left-color: #ef4444 !important;
+    background: linear-gradient(to right, rgba(239, 68, 68, 0.1), rgba(16, 185, 129, 0.05));
+}
+
+.priority-medium.calendar-linked {
+    border-left-color: #f59e0b !important;
+    background: linear-gradient(to right, rgba(245, 158, 11, 0.1), rgba(16, 185, 129, 0.05));
+}
+
+.priority-low.calendar-linked {
+    border-left-color: #3b82f6 !important;
+    background: linear-gradient(to right, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.05));
+}
+
+/* Tooltip styling for sync status */
+.sync-tooltip {
+    position: relative;
+}
+
+.sync-tooltip::before {
+    content: attr(data-sync-status);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    z-index: 1000;
+}
+
+.sync-tooltip:hover::before {
+    opacity: 1;
+}
+
+/* Mini calendar day indicators for linked events */
+.mini-calendar-day.has-linked-events {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    font-weight: bold;
+}
+
+/* Calendar grid enhancements */
+.calendar-day.has-linked-tasks {
+    background: linear-gradient(to bottom, rgba(16, 185, 129, 0.05), transparent);
+}
+
+.calendar-day.has-linked-tasks .day-number {
+    background: rgba(16, 185, 129, 0.1);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 2px auto;
+}
+
+/* Status indicators */
+.sync-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.sync-status.synced {
+    background: rgba(16, 185, 129, 0.1);
+    color: #065f46;
+}
+
+.sync-status.pending {
+    background: rgba(245, 158, 11, 0.1);
+    color: #92400e;
+}
+
+.sync-status.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #991b1b;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .task-item.calendar-linked::before,
+    .event.task-linked::after {
+        font-size: 12px;
+        right: 35px;
+    }
+
+    .sync-notification {
+        right: 10px;
+        left: 10px;
+        transform: translateY(-100%);
+    }
+
+    .sync-notification.show {
+        transform: translateY(0);
+    }
+}
+
+
+
+
 @media (max-width: 768px) {
     main {
         margin-left: 0;

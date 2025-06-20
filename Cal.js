@@ -50,13 +50,49 @@ let dayFormatter = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'l
 let monthFormatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
 let timeFormatter = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
 
-// Wait for DOM to be fully loaded
+// Enhanced initialization with proper event persistence
 document.addEventListener("DOMContentLoaded", function() {
-    console.log('✅ DOM Content Loaded');
-    initApp();
-    setupEventListeners();
-    loadPomodoroSettings();
+    console.log('✅ CALENDAR: DOM Content Loaded - Starting initialization...');
+
+    // Wait for all required systems to be ready
+    waitForSystemsReady().then(() => {
+        initializeCalendarApp();
+    }).catch(error => {
+        console.error('❌ CALENDAR: System initialization failed:', error);
+        // Initialize anyway with fallback
+        initializeCalendarApp();
+    });
 });
+
+
+// Wait for required systems (user data manager, auth guard, etc.)
+function waitForSystemsReady(maxWait = 5000) {
+    return new Promise((resolve, reject) => {
+        const startTime = Date.now();
+
+        function checkSystems() {
+            const elapsed = Date.now() - startTime;
+
+            if (elapsed > maxWait) {
+                console.warn('⚠️ CALENDAR: Timeout waiting for systems, proceeding anyway');
+                resolve();
+                return;
+            }
+
+            // Check if user data manager is ready
+            if (window.userDataManager && window.userDataManager.currentUser) {
+                console.log('✅ CALENDAR: User data manager ready');
+                resolve();
+                return;
+            }
+
+            // Check again in 100ms
+            setTimeout(checkSystems, 100);
+        }
+
+        checkSystems();
+    });
+}
 
 function initApp() {
     console.log('🚀 Initializing calendar...');
@@ -359,55 +395,183 @@ function showCalendarPage() {
 // DATABASE-INTEGRATED FUNCTIONS
 
 // Replace your existing loadEvents() function with this:
+// Enhanced loadEvents function with better error handling
 async function loadEvents() {
-    try {
-        if (window.taskDB && window.taskDB.isReady) {
-            events = await window.taskDB.getEvents();
-            console.log(`✅ Loaded ${events.length} events from database`);
+    console.log('📂 CALENDAR: Loading events...');
 
-            // Migrate from localStorage if no events in database
-            if (events.length === 0) {
+    try {
+        let loadedFromDB = false;
+
+        // Try database first
+        if (window.taskDB && window.taskDB.isReady) {
+            try {
+                const dbEvents = await window.taskDB.getEvents();
+                if (dbEvents && Array.isArray(dbEvents)) {
+                    events = dbEvents;
+                    loadedFromDB = true;
+                    console.log(`✅ CALENDAR: Loaded ${events.length} events from database`);
+                }
+            } catch (dbError) {
+                console.error('❌ CALENDAR: Database load failed:', dbError);
+            }
+        }
+
+        // Fallback to localStorage
+        if (!loadedFromDB) {
+            try {
                 const savedEvents = localStorage.getItem('calendar-events');
                 if (savedEvents) {
-                    const localEvents = JSON.parse(savedEvents);
-                    if (localEvents.length > 0) {
-                        console.log('🔄 Migrating events from localStorage...');
-                        for (const event of localEvents) {
-                            await window.taskDB.addEvent(event);
-                        }
-                        events = await window.taskDB.getEvents();
-                        console.log(`✅ Migrated ${events.length} events to database`);
+                    const parsedEvents = JSON.parse(savedEvents);
+                    if (Array.isArray(parsedEvents)) {
+                        events = parsedEvents;
+                        console.log(`📱 CALENDAR: Loaded ${events.length} events from localStorage`);
+                    } else {
+                        console.warn('⚠️ CALENDAR: Invalid events format in localStorage');
+                        events = [];
                     }
+                } else {
+                    console.log('📝 CALENDAR: No saved events found, starting fresh');
+                    events = [];
                 }
+            } catch (parseError) {
+                console.error('❌ CALENDAR: Failed to parse localStorage events:', parseError);
+                events = [];
             }
-        } else {
-            // Fallback to localStorage
-            const savedEvents = localStorage.getItem('calendar-events');
-            events = savedEvents ? JSON.parse(savedEvents) : [];
-            console.log(`📱 Loaded ${events.length} events from localStorage (fallback)`);
         }
+
+        // Migrate from localStorage to database if database is available but empty
+        if (window.taskDB && window.taskDB.isReady && !loadedFromDB && events.length > 0) {
+            console.log('🔄 CALENDAR: Migrating events from localStorage to database...');
+            try {
+                for (const event of events) {
+                    await window.taskDB.addEvent(event);
+                }
+                console.log(`✅ CALENDAR: Migrated ${events.length} events to database`);
+            } catch (migrationError) {
+                console.error('❌ CALENDAR: Migration failed:', migrationError);
+            }
+        }
+
     } catch (error) {
-        console.error('❌ Failed to load events:', error);
-        const savedEvents = localStorage.getItem('calendar-events');
-        events = savedEvents ? JSON.parse(savedEvents) : [];
+        console.error('❌ CALENDAR: Critical error loading events:', error);
+        events = [];
     }
+
+    // Ensure events is always an array
+    if (!Array.isArray(events)) {
+        console.warn('⚠️ CALENDAR: Events is not an array, resetting');
+        events = [];
+    }
+
+    console.log(`📊 CALENDAR: Final event count: ${events.length}`);
 }
 
-// Fallback localStorage save function
-function saveEventsToLocalStorage() {
-    localStorage.setItem('calendar-events', JSON.stringify(events));
+// Enhanced renderWeekView function with better event positioning
+function renderWeekView() {
+    console.log('📅 CALENDAR: Rendering week view...');
+    const weekHeader = document.getElementById('week-header');
+    const weekGrid = document.getElementById('week-grid');
+
+    if (!weekHeader || !weekGrid) {
+        console.error('❌ CALENDAR: Week view containers not found');
+        return;
+    }
+
+    weekHeader.innerHTML = '';
+    weekGrid.innerHTML = '';
+
+    const weekStart = getWeekStartDate(currentDate);
+    console.log(`📅 CALENDAR: Week starts on ${weekStart.toDateString()}`);
+
+    // Create the day headers and columns
+    for (let i = 0; i < 7; i++) {
+        const dayDate = new Date(weekStart);
+        dayDate.setDate(weekStart.getDate() + i);
+
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'day-header';
+
+        // Check if day is today
+        const today = new Date();
+        if (dayDate.toDateString() === today.toDateString()) {
+            dayHeader.classList.add('today');
+        }
+
+        dayHeader.textContent = dayDate.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'numeric',
+            day: 'numeric'
+        });
+        weekHeader.appendChild(dayHeader);
+
+        // Create column for the day
+        const dayColumn = document.createElement('div');
+        dayColumn.className = 'week-column';
+        if (dayHeader.classList.contains('today')) {
+            dayColumn.classList.add('today');
+        }
+
+        // Create hour slots (24 hours)
+        for (let hour = 0; hour < 24; hour++) {
+            const hourSlot = document.createElement('div');
+            hourSlot.className = 'hour-slot';
+            hourSlot.dataset.hour = hour;
+            hourSlot.dataset.date = formatDate(dayDate);
+
+            // Add hour slot click handler
+            hourSlot.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const selectedDate = new Date(dayDate);
+                selectedDate.setHours(hour);
+                showAddEventModal(selectedDate);
+            });
+
+            dayColumn.appendChild(hourSlot);
+        }
+
+        // Add current time indicator if it's today
+        if (dayHeader.classList.contains('today')) {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const topPosition = (hours * 60 + minutes) * (60 / 60); // 60px per hour
+
+            const timeIndicator = document.createElement('div');
+            timeIndicator.className = 'current-time-indicator';
+            timeIndicator.style.top = `${topPosition}px`;
+            timeIndicator.style.position = 'absolute';
+            timeIndicator.style.left = '0';
+            timeIndicator.style.right = '0';
+            timeIndicator.style.height = '2px';
+            timeIndicator.style.backgroundColor = '#ef4444';
+            timeIndicator.style.zIndex = '10';
+            dayColumn.appendChild(timeIndicator);
+        }
+
+        // Get events for this day and add them
+        const dayFormatted = formatDate(dayDate);
+        const dayEvents = getEventsForDay(dayFormatted);
+
+        console.log(`📅 CALENDAR: Day ${dayFormatted} has ${dayEvents.length} events`);
+
+        dayEvents.forEach((event, index) => {
+            const eventElement = createWeekDayEvent(event, false);
+            if (eventElement) {
+                // Add some horizontal offset for multiple events
+                eventElement.style.left = `${2 + (index * 2)}px`;
+                eventElement.style.right = `${2 + (index * 2)}px`;
+                eventElement.style.zIndex = `${10 + index}`;
+                dayColumn.appendChild(eventElement);
+                console.log(`📅 CALENDAR: Added event "${event.title}" to ${dayFormatted}`);
+            }
+        });
+
+        weekGrid.appendChild(dayColumn);
+    }
+
+    console.log(`✅ CALENDAR: Week view rendered with ${events.length} total events`);
 }
 
-
-
-// Replace your existing deleteSelectedEvent() function with this:
-// UPDATED DELETE FUNCTION FOR CAL.JS
-// Replace your existing deleteSelectedEvent function with this enhanced version:
-
-// ALSO ADD THIS ENHANCED SAVE EVENT FUNCTION FOR BETTER TASK-EVENT LINKING
-// COMPLETE CALENDAR.JS FIX - Replace your deleteSelectedEvent function with this:
-
-// REPLACE YOUR deleteSelectedEvent FUNCTION IN CAL.JS WITH THIS:
 async function deleteSelectedEvent() {
     if (!selectedEvent) return;
 
@@ -536,62 +700,80 @@ async function saveEvent() {
     const prioritySelect = document.getElementById('event-priority');
     const addAsTask = document.getElementById('add-as-task');
 
-    // Validate
+    // Validate required fields
     if (!titleInput || !titleInput.value.trim()) {
         alert('Please enter a title for the event');
+        titleInput?.focus();
         return;
     }
 
     if (!dateInput || !dateInput.value) {
         alert('Please select a date for the event');
+        dateInput?.focus();
         return;
     }
 
-    console.log('💾 CALENDAR: Saving new event...');
+    console.log('💾 CALENDAR: Saving event...');
+    console.log('Current events before save:', events.length);
 
     // Check if we're editing an existing event
     const isEditing = selectedEvent && selectedEvent.id;
 
-    // Create event object
+    // Create event object with all required fields
     const eventData = {
         title: titleInput.value.trim(),
         date: dateInput.value,
-        time: timeInput ? timeInput.value || null : null,
-        endDate: endDateInput ? endDateInput.value || dateInput.value : dateInput.value,
-        endTime: endTimeInput ? endTimeInput.value || null : null,
-        description: descriptionInput ? descriptionInput.value.trim() : '',
-        list: listSelect && listSelect.value !== 'none' ? listSelect.value : null,
-        priority: prioritySelect && prioritySelect.value !== 'none' ? prioritySelect.value : null,
+        time: timeInput?.value || null,
+        endDate: endDateInput?.value || dateInput.value,
+        endTime: endTimeInput?.value || null,
+        description: descriptionInput?.value.trim() || '',
+        list: listSelect?.value !== 'none' ? listSelect?.value : null,
+        priority: prioritySelect?.value !== 'none' ? prioritySelect?.value : null,
         lastUpdated: new Date().toISOString()
     };
 
     // If editing, preserve existing properties
     if (isEditing) {
         eventData.id = selectedEvent.id;
-        eventData.createdAt = selectedEvent.createdAt;
-        eventData.hasAssociatedTask = selectedEvent.hasAssociatedTask;
-        eventData.associatedTaskId = selectedEvent.associatedTaskId;
-        eventData.taskCompleted = selectedEvent.taskCompleted;
+        eventData.createdAt = selectedEvent.createdAt || new Date().toISOString();
+        eventData.hasAssociatedTask = selectedEvent.hasAssociatedTask || false;
+        eventData.associatedTaskId = selectedEvent.associatedTaskId || null;
+        eventData.taskCompleted = selectedEvent.taskCompleted || false;
     } else {
         eventData.createdAt = new Date().toISOString();
+        eventData.hasAssociatedTask = false;
+        eventData.associatedTaskId = null;
+        eventData.taskCompleted = false;
     }
 
     try {
         let eventId;
+        let saveSuccess = false;
 
         if (isEditing) {
             // Update existing event
             eventId = selectedEvent.id;
+            console.log(`📝 CALENDAR: Updating existing event ${eventId}`);
 
+            // Try database first
             if (window.taskDB && window.taskDB.isReady) {
-                await window.taskDB.updateEvent(eventData);
-                console.log('✅ CALENDAR: Event updated in database');
-            } else {
-                // Update in localStorage
-                const eventIndex = events.findIndex(e => e.id === eventId);
-                if (eventIndex !== -1) {
-                    events[eventIndex] = eventData;
+                try {
+                    await window.taskDB.updateEvent(eventData);
+                    console.log('✅ CALENDAR: Event updated in database');
+                    saveSuccess = true;
+                } catch (dbError) {
+                    console.error('❌ CALENDAR: Database update failed:', dbError);
                 }
+            }
+
+            // Update in local events array
+            const eventIndex = events.findIndex(e => e.id == eventId);
+            if (eventIndex !== -1) {
+                events[eventIndex] = { ...eventData };
+                console.log(`✅ CALENDAR: Event updated in local array at index ${eventIndex}`);
+                saveSuccess = true;
+            } else {
+                console.error('❌ CALENDAR: Event not found in local array for update');
             }
 
             // Update associated task if it exists
@@ -599,135 +781,93 @@ async function saveEvent() {
                 await updateAssociatedTask(eventData);
             }
 
-            showCalendarNotification('Event updated successfully!', 'success');
         } else {
             // Create new event
+            console.log('📝 CALENDAR: Creating new event');
+
+            // Generate unique ID
+            eventId = Date.now() + Math.random();
+            eventData.id = eventId;
+
+            // Try database first
             if (window.taskDB && window.taskDB.isReady) {
-                eventId = await window.taskDB.addEvent(eventData);
-                eventData.id = eventId;
-                console.log('✅ CALENDAR: Event saved to database with ID:', eventId);
-            } else {
-                eventId = Date.now();
-                eventData.id = eventId;
-                console.log('📱 CALENDAR: Event saved to localStorage with ID:', eventId);
+                try {
+                    const dbEventId = await window.taskDB.addEvent(eventData);
+                    eventData.id = dbEventId;
+                    eventId = dbEventId;
+                    console.log(`✅ CALENDAR: Event saved to database with ID: ${eventId}`);
+                    saveSuccess = true;
+                } catch (dbError) {
+                    console.error('❌ CALENDAR: Database save failed:', dbError);
+                    // Keep the generated ID for localStorage fallback
+                }
             }
 
-            // Add to local array for UI
-            events.push(eventData);
-            showCalendarNotification('Event created successfully!', 'success');
+            // Add to local array
+            events.push({ ...eventData });
+            console.log(`✅ CALENDAR: Event added to local array. Total events: ${events.length}`);
+            saveSuccess = true;
+        }
+
+        // CRITICAL: Always save to localStorage as backup
+        try {
+            localStorage.setItem('calendar-events', JSON.stringify(events));
+            console.log(`💾 CALENDAR: Events saved to localStorage (${events.length} events)`);
+
+            // Trigger storage event for cross-page sync
+            window.dispatchEvent(new StorageEvent('storage', {
+                key: 'calendar-events',
+                newValue: JSON.stringify(events),
+                oldValue: null
+            }));
+            console.log('📡 CALENDAR: Storage event dispatched');
+
+        } catch (storageError) {
+            console.error('❌ CALENDAR: localStorage save failed:', storageError);
         }
 
         // Handle "Add as Task" for new events only
-        if (!isEditing && addAsTask && addAsTask.checked) {
+        if (!isEditing && addAsTask?.checked) {
             console.log('📝 CALENDAR: Creating associated task for event...');
             await createAssociatedTask(eventData);
         }
 
-        // Save to localStorage as backup
-        saveEventsToLocalStorage();
+        // Show success message
+        if (saveSuccess) {
+            showCalendarNotification(
+                isEditing ? 'Event updated successfully!' : 'Event created successfully!',
+                'success'
+            );
+        } else {
+            showCalendarNotification('Event saved with some issues', 'warning');
+        }
 
-        // Trigger storage event for other pages
-        window.dispatchEvent(new StorageEvent('storage', {
-            key: 'calendar-events',
-            newValue: JSON.stringify(events)
-        }));
-
+        // Close modal and refresh view
         closeAllModals();
-        updateCalendarView();
-        selectedEvent = null; // Clear selection
+        selectedEvent = null;
+
+        // Force refresh of the calendar view
+        setTimeout(() => {
+            updateCalendarView();
+            console.log(`🔄 CALENDAR: View refreshed. Total events: ${events.length}`);
+        }, 100);
 
     } catch (error) {
         console.error('❌ CALENDAR: Failed to save event:', error);
         showCalendarNotification('Failed to save event', 'error');
-    }
-}
 
-//wiqas
-// Enhanced storage event listener for real-time sync
-window.addEventListener('storage', function(e) {
-    if (e.key === 'calendar-events') {
-        console.log('🔄 CALENDAR: Storage event received for calendar-events');
-
-        // Get the new events data
-        const newEventsData = e.newValue ? JSON.parse(e.newValue) : [];
-        const oldEventsCount = events.length;
-        const newEventsCount = newEventsData.length;
-
-        // Update events array directly without showing deletion messages
-        events = newEventsData;
-
-        // Update the view
-        updateCalendarView();
-
-        // Log the change appropriately
-        if (newEventsCount < oldEventsCount) {
-            const deletedCount = oldEventsCount - newEventsCount;
-            console.log(`✅ CALENDAR: ${deletedCount} event(s) removed via cross-page sync`);
-        } else if (newEventsCount > oldEventsCount) {
-            const addedCount = newEventsCount - oldEventsCount;
-            console.log(`✅ CALENDAR: ${addedCount} event(s) added via cross-page sync`);
-        } else {
-            console.log('✅ CALENDAR: Events synced (no count change)');
-        }
-    }
-
-    // Listen for task changes and sync to linked events
-    if (e.key === 'tasks') {
-        console.log('🔄 CALENDAR: Tasks updated, syncing to linked events...');
-        syncTaskChangesToEvents();
-    }
-});
-
-async function updateAssociatedTask(event) {
-    const taskId = event.associatedTaskId;
-    if (!taskId) return;
-
-    try {
-        if (window.taskDB && window.taskDB.isReady) {
-            const task = await window.taskDB.getTaskById(taskId);
-            if (task) {
-                const updatedTask = {
-                    ...task,
-                    title: event.title,
-                    description: event.description,
-                    date: event.date,
-                    priority: event.priority || task.priority,
-                    list: event.list !== null ? event.list : task.list
-                };
-                await window.taskDB.updateTask(updatedTask);
-                console.log('✅ CALENDAR: Associated task updated in database');
+        // Try to save locally as fallback
+        try {
+            if (!isEditing) {
+                eventData.id = Date.now() + Math.random();
+                events.push(eventData);
             }
-        } else {
-            // Update in localStorage
-            let tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-            const taskIndex = tasks.findIndex(t => t.id == taskId);
-
-            if (taskIndex !== -1) {
-                tasks[taskIndex] = {
-                    ...tasks[taskIndex],
-                    title: event.title,
-                    description: event.description,
-                    date: event.date,
-                    priority: event.priority || tasks[taskIndex].priority,
-                    list: event.list !== null ? event.list : tasks[taskIndex].list
-                };
-
-                localStorage.setItem('tasks', JSON.stringify(tasks));
-
-                // Trigger storage event
-                window.dispatchEvent(new StorageEvent('storage', {
-                    key: 'tasks',
-                    newValue: JSON.stringify(tasks)
-                }));
-
-                console.log('✅ CALENDAR: Associated task updated in localStorage');
-            }
+            localStorage.setItem('calendar-events', JSON.stringify(events));
+            updateCalendarView();
+            showCalendarNotification('Event saved locally only', 'warning');
+        } catch (fallbackError) {
+            console.error('❌ CALENDAR: Even fallback save failed:', fallbackError);
         }
-
-        showCalendarNotification('Event and linked task updated!', 'success');
-    } catch (error) {
-        console.error('❌ CALENDAR: Failed to update associated task:', error);
-        showCalendarNotification('Event updated, but failed to update linked task', 'warning');
     }
 }
 
@@ -1306,6 +1446,9 @@ function changeView(view) {
 }
 
 function updateCalendarView() {
+    console.log(`🔄 CALENDAR: Updating calendar view (${currentView})`);
+    console.log(`📊 CALENDAR: Current events count: ${events.length}`);
+
     updateCalendarTitle();
 
     switch(currentView) {
@@ -1315,10 +1458,132 @@ function updateCalendarView() {
         case 'week':
             renderWeekView();
             break;
+        default:
+            console.warn(`⚠️ CALENDAR: Unknown view: ${currentView}`);
+            renderMonthView();
+            break;
     }
 
     renderMiniCalendar();
+    console.log(`✅ CALENDAR: Calendar view updated`);
 }
+
+// Enhanced page load handling
+document.addEventListener("DOMContentLoaded", function() {
+    console.log('✅ CALENDAR: DOM Content Loaded');
+
+    // Initialize app with proper loading sequence
+    initializeCalendarApp();
+});
+
+
+async function initializeCalendarApp() {
+    console.log('🚀 CALENDAR: Initializing calendar app...');
+
+    try {
+        // Load data in sequence
+        await loadLists();
+        await loadEvents(); // This now properly handles all loading scenarios
+
+        // Initialize calendar
+        updateCalendarTitle();
+        renderMiniCalendar();
+        updateCalendarView();
+
+        // Set up event listeners
+        setupEventListeners();
+        setupPomodoroEventListeners();
+        loadPomodoroSettings();
+
+        console.log(`📊 CALENDAR: Initialized with ${events.length} events and ${lists.length} lists`);
+
+        // Create test events only if no events exist
+        if (events.length === 0) {
+            console.log('📝 CALENDAR: No events found, creating test events...');
+            createTestEvents();
+        }
+
+    } catch (error) {
+        console.error('❌ CALENDAR: Initialization failed:', error);
+        // Initialize with empty data as fallback
+        events = [];
+        lists = ['Personal', 'Work', 'Shopping'];
+        updateCalendarView();
+    }
+}
+
+// Enhanced storage event listener for better sync
+window.addEventListener('storage', function(e) {
+    if (e.key === 'calendar-events') {
+        console.log('🔄 CALENDAR: Storage event received for calendar-events');
+
+        try {
+            const newEventsData = e.newValue ? JSON.parse(e.newValue) : [];
+            if (Array.isArray(newEventsData)) {
+                const oldEventsCount = events.length;
+                events = newEventsData;
+
+                // Update the view immediately
+                updateCalendarView();
+
+                console.log(`✅ CALENDAR: Events synced via storage event. Count: ${oldEventsCount} → ${events.length}`);
+            } else {
+                console.warn('⚠️ CALENDAR: Invalid events data received via storage event');
+            }
+        } catch (parseError) {
+            console.error('❌ CALENDAR: Failed to parse storage event data:', parseError);
+        }
+    }
+
+    // Also listen for task changes to update any task-related displays
+    if (e.key === 'tasks') {
+        console.log('🔄 CALENDAR: Tasks updated in another page');
+        syncTaskChangesToEvents();
+    }
+});
+
+// Enhanced debugging function
+window.debugCalendar = function() {
+    console.log('=== CALENDAR DEBUG ===');
+    console.log('Current View:', currentView);
+    console.log('Current Date:', currentDate);
+    console.log('Events Array:', events);
+    console.log('Events Count:', events.length);
+    console.log('LocalStorage Events:', localStorage.getItem('calendar-events'));
+
+    if (window.taskDB) {
+        console.log('Database Available:', window.taskDB.isReady);
+    }
+
+    // Test event creation
+    const testEvent = {
+        id: 'debug-' + Date.now(),
+        title: 'Debug Test Event',
+        date: formatDate(new Date()),
+        time: '14:00',
+        description: 'Test event for debugging',
+        createdAt: new Date().toISOString()
+    };
+
+    events.push(testEvent);
+    localStorage.setItem('calendar-events', JSON.stringify(events));
+    updateCalendarView();
+
+    console.log('Added debug event and refreshed view');
+    return testEvent;
+};
+
+// Force refresh function
+window.forceRefreshCalendar = function() {
+    console.log('🔄 CALENDAR: Force refreshing...');
+    loadEvents().then(() => {
+        updateCalendarView();
+        console.log('✅ CALENDAR: Force refresh completed');
+    });
+};
+
+console.log('✅ CALENDAR: Week view persistence fixes loaded');
+
 
 function updateCalendarTitle() {
     let title;
