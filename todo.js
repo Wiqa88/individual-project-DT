@@ -1603,6 +1603,189 @@ document.addEventListener("DOMContentLoaded", function() {
         return isNaN(date.getTime()) ? new Date('9999-12-31').getTime() : date.getTime();
     }
 
+
+    async function addTask() {
+        const titleValue = taskTitle.value.trim();
+
+        if (!titleValue) {
+            alert('Please enter a task title');
+            return;
+        }
+
+        if (!window.userDataManager || !window.userDataManager.currentUser) {
+            alert('Error: User not authenticated');
+            return;
+        }
+
+        console.log(`🔄 Adding new task for ${window.userDataManager.currentUser.email}...`);
+
+        const newTask = {
+            id: Date.now(),
+            title: titleValue,
+            description: taskDescription.value.trim(),
+            date: dueDate.value || null,
+            reminder: reminder.value || null,
+            priority: normalizeTaskPriority(priority.value),
+            list: listSelect.value !== 'default' ? listSelect.value : 'N/A',
+            completed: false,
+            createdAt: new Date().toISOString(),
+            subtasks: [],
+            userId: window.userDataManager.currentUser.id || window.userDataManager.currentUser.email
+        };
+
+        try {
+            let taskId;
+
+            // Try database first
+            if (window.taskDB && window.taskDB.isReady) {
+                taskId = await window.taskDB.addTask(newTask);
+                newTask.id = taskId;
+                console.log('✅ TODO: Task saved to database with ID:', taskId);
+            } else {
+                // Fallback to localStorage
+                taskId = newTask.id;
+                console.log('📱 TODO: Using localStorage fallback');
+            }
+
+            // Add to tasks array
+            tasks.push(newTask);
+
+            // Save to user-specific storage
+            saveTasks();
+
+            // **NEW: Check if "Add to Calendar" option should be automatically triggered**
+            const shouldAddToCalendar = checkIfShouldAddToCalendar(newTask);
+
+            if (shouldAddToCalendar) {
+                console.log('📅 TODO: Automatically creating calendar event for task with date...');
+                await createCalendarEventFromTask(newTask);
+            }
+
+            // Refresh current view
+            refreshCurrentView();
+
+            // Clear form
+            clearTaskForm();
+            taskCreationBox.classList.remove("expanded");
+
+            console.log(`✅ Task added successfully for ${window.userDataManager.currentUser.email}`);
+
+            if (shouldAddToCalendar) {
+                showTaskNotification('Task added and synced to calendar!', 'success');
+            } else {
+                showTaskNotification('Task added successfully!', 'success');
+            }
+
+        } catch (error) {
+            console.error('❌ TODO: Failed to add task:', error);
+
+            // Fallback - still add to local array
+            tasks.push(newTask);
+            saveTasks();
+            refreshCurrentView();
+            clearTaskForm();
+            taskCreationBox.classList.remove("expanded");
+
+            showTaskNotification('Task added locally (with sync issues)', 'warning');
+        }
+    }
+
+    function checkIfShouldAddToCalendar(task) {
+        // Auto-sync to calendar if:
+        // 1. Task has a due date, OR
+        // 2. Task has a reminder, OR
+        // 3. Task is high priority
+        return !!(task.date || task.reminder || task.priority === 'high');
+    }
+
+    async function createCalendarEventFromTask(task) {
+        try {
+            console.log(`📅 TODO: Creating calendar event for task: ${task.title}`);
+
+            // Create event object
+            const eventData = {
+                title: task.title,
+                description: task.description || '',
+                date: task.date || new Date().toISOString().split('T')[0],
+                time: task.reminder ? extractTimeFromReminder(task.reminder) : null,
+                list: task.list !== 'N/A' ? task.list : null,
+                priority: task.priority !== 'N/A' ? task.priority : null,
+                sourceTaskId: task.id,
+                associatedTaskId: task.id,
+                createdFromTask: true,
+                hasAssociatedTask: true,
+                createdAt: new Date().toISOString()
+            };
+
+            let eventId;
+
+            // Try database first
+            if (window.taskDB && window.taskDB.isReady) {
+                eventId = await window.taskDB.addEvent(eventData);
+                console.log('✅ TODO: Calendar event saved to database with ID:', eventId);
+            } else {
+                // Fallback to localStorage
+                eventId = Date.now() + Math.random();
+                eventData.id = eventId;
+
+                let calendarEvents = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+                calendarEvents.push(eventData);
+                localStorage.setItem('calendar-events', JSON.stringify(calendarEvents));
+
+                // Trigger storage event for real-time sync
+                window.dispatchEvent(new StorageEvent('storage', {
+                    key: 'calendar-events',
+                    newValue: JSON.stringify(calendarEvents)
+                }));
+
+                console.log('📱 TODO: Calendar event saved to localStorage with ID:', eventId);
+            }
+
+            // Update the task to link back to the event
+            task.hasAssociatedEvent = true;
+            task.associatedEventId = eventId;
+
+            // Update task in database/storage
+            if (window.taskDB && window.taskDB.isReady) {
+                await window.taskDB.updateTask(task);
+            } else {
+                // Update in tasks array and save
+                const taskIndex = tasks.findIndex(t => t.id === task.id);
+                if (taskIndex !== -1) {
+                    tasks[taskIndex] = task;
+                    saveTasks();
+                }
+            }
+
+            console.log(`🔗 TODO: Linked task ${task.id} with calendar event ${eventId}`);
+            return eventId;
+
+        } catch (error) {
+            console.error('❌ TODO: Failed to create calendar event from task:', error);
+            throw error;
+        }
+    }
+
+    function extractTimeFromReminder(reminder) {
+        if (!reminder) return null;
+
+        // If reminder is a datetime string, extract time
+        try {
+            const reminderDate = new Date(reminder);
+            if (!isNaN(reminderDate.getTime())) {
+                const hours = reminderDate.getHours().toString().padStart(2, '0');
+                const minutes = reminderDate.getMinutes().toString().padStart(2, '0');
+                return `${hours}:${minutes}`;
+            }
+        } catch (error) {
+            console.log('Could not extract time from reminder:', error);
+        }
+
+        return null;
+    }
+
+    
+
 // Enhanced addTask function to ensure consistent priority values
     function normalizeTaskPriority(priority) {
         if (!priority || priority === 'priority') return 'medium';
