@@ -1784,6 +1784,197 @@ document.addEventListener("DOMContentLoaded", function() {
         return null;
     }
 
+
+    function createEventElement(event) {
+        const eventElement = document.createElement('div');
+        eventElement.className = 'event';
+
+        // Set background color based on list
+        const listColor = getListColor(event.list);
+        eventElement.style.backgroundColor = listColor;
+        eventElement.style.color = 'white';
+
+        // **FIXED: Don't prepend time to title for events created from tasks**
+        let titleText = event.title;
+
+        // Only add time prefix for events that were originally created in calendar with time
+        // Don't add time for events created from tasks (which may have extracted time)
+        if (event.time && !event.createdFromTask) {
+            titleText = `${formatTime(event.time)} ${titleText}`;
+        }
+
+        // Add task completion indicator
+        if (event.hasAssociatedTask || event.associatedTaskId) {
+            const taskIcon = document.createElement('i');
+            taskIcon.className = event.taskCompleted ? 'fas fa-check-circle' : 'fas fa-tasks';
+            taskIcon.style.cssText = `
+            margin-right: 5px;
+            opacity: 0.8;
+            font-size: 12px;
+        `;
+
+            const titleContainer = document.createElement('div');
+            titleContainer.style.display = 'flex';
+            titleContainer.style.alignItems = 'center';
+            titleContainer.appendChild(taskIcon);
+            titleContainer.appendChild(document.createTextNode(titleText));
+
+            eventElement.appendChild(titleContainer);
+
+            // Add strikethrough effect if task is completed
+            if (event.taskCompleted) {
+                eventElement.style.textDecoration = 'line-through';
+                eventElement.style.opacity = '0.7';
+            }
+        } else {
+            eventElement.textContent = titleText;
+        }
+
+        // Add click handler to show details
+        eventElement.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showEventDetails(event);
+        });
+
+        return eventElement;
+    }
+
+
+    async function createCalendarEventFromTask(task) {
+        try {
+            console.log(`📅 TODO: Creating calendar event for task: ${task.title}`);
+
+            // **FIXED: Default to all-day events unless there's a specific time**
+            let eventTime = null;
+            let eventDate = task.date || new Date().toISOString().split('T')[0];
+
+            // Only set time if there's a CLEAR time indication
+            if (task.reminder) {
+                // Check if reminder is a full datetime string (contains 'T' for time)
+                if (task.reminder.includes('T')) {
+                    try {
+                        const reminderDate = new Date(task.reminder);
+                        if (!isNaN(reminderDate.getTime())) {
+                            const hours = reminderDate.getHours();
+                            const minutes = reminderDate.getMinutes();
+
+                            // Only use time if it's not midnight (00:00)
+                            // This prevents "12:00 AM" showing for date-only tasks
+                            if (hours !== 0 || minutes !== 0) {
+                                eventTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                            }
+
+                            // Use reminder date if it's different from task date
+                            const reminderDateStr = reminderDate.toISOString().split('T')[0];
+                            if (reminderDateStr !== eventDate) {
+                                eventDate = reminderDateStr;
+                            }
+                        }
+                    } catch (error) {
+                        console.log('Could not extract time from reminder:', error);
+                    }
+                }
+                // If reminder is just a date (YYYY-MM-DD), keep it as all-day event
+                else if (task.reminder.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    eventDate = task.reminder;
+                    eventTime = null; // Explicitly null for all-day
+                }
+            }
+
+            // **IMPORTANT: Most tasks from todo should be all-day events**
+            // Only create timed events if user specifically set a time
+            console.log(`Creating calendar event: ${task.title}, Date: ${eventDate}, Time: ${eventTime || 'all-day'}`);
+
+            // Create event object
+            const eventData = {
+                title: task.title,
+                description: task.description || '',
+                date: eventDate,
+                time: eventTime, // null = all-day event
+                endTime: null,
+                endDate: eventDate, // Same day for all-day events
+                list: task.list !== 'N/A' ? task.list : null,
+                priority: task.priority !== 'N/A' ? task.priority : null,
+                sourceTaskId: task.id,
+                associatedTaskId: task.id,
+                createdFromTask: true,
+                hasAssociatedTask: true,
+                taskCompleted: task.completed || false,
+                createdAt: new Date().toISOString()
+            };
+
+            let eventId;
+
+            // Try database first
+            if (window.taskDB && window.taskDB.isReady) {
+                eventId = await window.taskDB.addEvent(eventData);
+                console.log('✅ TODO: Calendar event saved to database with ID:', eventId);
+            } else {
+                // Fallback to localStorage
+                eventId = Date.now() + Math.random();
+                eventData.id = eventId;
+
+                let calendarEvents = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+                calendarEvents.push(eventData);
+                localStorage.setItem('calendar-events', JSON.stringify(calendarEvents));
+
+                // Trigger storage event for real-time sync
+                window.dispatchEvent(new StorageEvent('storage', {
+                    key: 'calendar-events',
+                    newValue: JSON.stringify(calendarEvents)
+                }));
+
+                console.log('📱 TODO: Calendar event saved to localStorage with ID:', eventId);
+            }
+
+            // Update the task to link back to the event
+            task.hasAssociatedEvent = true;
+            task.associatedEventId = eventId;
+
+            // Update task in database/storage
+            if (window.taskDB && window.taskDB.isReady) {
+                await window.taskDB.updateTask(task);
+            } else {
+                // Update in tasks array and save
+                const taskIndex = tasks.findIndex(t => t.id === task.id);
+                if (taskIndex !== -1) {
+                    tasks[taskIndex] = task;
+                    saveTasks();
+                }
+            }
+
+            console.log(`🔗 TODO: Linked task ${task.id} with calendar event ${eventId}`);
+            return eventId;
+
+        } catch (error) {
+            console.error('❌ TODO: Failed to create calendar event from task:', error);
+            throw error;
+        }
+    }
+
+
+// **ENHANCED: Better time detection function**
+    function hasSpecificTime(dateTimeString) {
+        if (!dateTimeString) return false;
+
+        // Check if it's a full datetime string with time
+        if (dateTimeString.includes('T')) {
+            try {
+                const date = new Date(dateTimeString);
+                if (!isNaN(date.getTime())) {
+                    const hours = date.getHours();
+                    const minutes = date.getMinutes();
+                    // Return true only if it's not midnight
+                    return hours !== 0 || minutes !== 0;
+                }
+            } catch (error) {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
     
 
 // Enhanced addTask function to ensure consistent priority values
