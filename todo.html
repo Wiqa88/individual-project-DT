@@ -794,26 +794,7 @@ Need more help? Contact support@taskmanager.pro`;
   });
 
   // Welcome message for authenticated users
-  window.addEventListener('load', () => {
-    // Show welcome message after a short delay
-    setTimeout(() => {
-      if (window.authGuard && window.authGuard.getCurrentUser()) {
-        const user = window.authGuard.getCurrentUser();
-        const now = new Date();
-        const hour = now.getHours();
 
-        let greeting;
-        if (hour < 12) greeting = 'Good morning';
-        else if (hour < 17) greeting = 'Good afternoon';
-        else greeting = 'Good evening';
-
-        // Show a personalized welcome
-        if (window.authGuard.showNotification) {
-          window.authGuard.showNotification(`${greeting}, ${user.name}! Ready to be productive?`, 'success');
-        }
-      }
-    }, 1500);
-  });
 
   // Enhanced task creation with user context
   if (window.addTask) {

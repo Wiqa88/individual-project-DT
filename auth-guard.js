@@ -77,9 +77,7 @@ class AuthGuard {
                 console.log(`✅ User data context initialized for ${this.currentUser.email}`);
 
                 // Show welcome message
-                setTimeout(() => {
-                    this.showNotification(`Welcome back, ${this.currentUser.name}!`, 'success');
-                }, 500);
+
             } else {
                 setTimeout(initUserData, 100);
             }
