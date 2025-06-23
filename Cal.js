@@ -466,6 +466,594 @@ async function loadEvents() {
     console.log(`📊 CALENDAR: Final event count: ${events.length}`);
 }
 
+
+function renderWeekView() {
+    console.log('📅 CALENDAR: Rendering week view with improved overlap handling...');
+    const weekHeader = document.getElementById('week-header');
+    const weekGrid = document.getElementById('week-grid');
+
+    if (!weekHeader || !weekGrid) {
+        console.error('❌ CALENDAR: Week view containers not found');
+        return;
+    }
+
+    weekHeader.innerHTML = '';
+    weekGrid.innerHTML = '';
+
+    const weekStart = getWeekStartDate(currentDate);
+    console.log(`📅 CALENDAR: Week starts on ${weekStart.toDateString()}`);
+
+    // Create the day headers and columns
+    for (let i = 0; i < 7; i++) {
+        const dayDate = new Date(weekStart);
+        dayDate.setDate(weekStart.getDate() + i);
+
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'day-header';
+
+        // Check if day is today
+        const today = new Date();
+        if (dayDate.toDateString() === today.toDateString()) {
+            dayHeader.classList.add('today');
+        }
+
+        dayHeader.textContent = dayDate.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'numeric',
+            day: 'numeric'
+        });
+        weekHeader.appendChild(dayHeader);
+
+        // Create column for the day
+        const dayColumn = document.createElement('div');
+        dayColumn.className = 'week-column';
+        dayColumn.style.position = 'relative';
+
+        if (dayHeader.classList.contains('today')) {
+            dayColumn.classList.add('today');
+        }
+
+        // Create hour slots (24 hours)
+        for (let hour = 0; hour < 24; hour++) {
+            const hourSlot = document.createElement('div');
+            hourSlot.className = 'hour-slot';
+            hourSlot.dataset.hour = hour;
+            hourSlot.dataset.date = formatDate(dayDate);
+
+            hourSlot.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const selectedDate = new Date(dayDate);
+                selectedDate.setHours(hour);
+                showAddEventModal(selectedDate);
+            });
+
+            dayColumn.appendChild(hourSlot);
+        }
+
+        // Add current time indicator if it's today
+        if (dayHeader.classList.contains('today')) {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const topPosition = (hours * 60 + minutes) * (60 / 60);
+
+            const timeIndicator = document.createElement('div');
+            timeIndicator.className = 'current-time-indicator';
+            timeIndicator.style.cssText = `
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: ${topPosition}px;
+                height: 2px;
+                background: #ef4444;
+                z-index: 15;
+                box-shadow: 0 1px 3px rgba(239, 68, 68, 0.5);
+            `;
+            dayColumn.appendChild(timeIndicator);
+        }
+
+        // **IMPROVED: Process events with better overlap handling**
+        const dayFormatted = formatDate(dayDate);
+        const dayEvents = getEventsForDay(dayFormatted);
+
+        console.log(`📅 CALENDAR: Day ${dayFormatted} has ${dayEvents.length} events`);
+
+        if (dayEvents.length > 0) {
+            createVisibleOverlappingEvents(dayColumn, dayEvents);
+        }
+
+        weekGrid.appendChild(dayColumn);
+    }
+
+    console.log(`✅ CALENDAR: Week view rendered with improved overlap visibility`);
+}
+
+// **NEW: Create overlapping events that are all visible**
+function createVisibleOverlappingEvents(dayColumn, dayEvents) {
+    // Separate all-day and timed events
+    const allDayEvents = dayEvents.filter(event => !event.time);
+    const timedEvents = dayEvents.filter(event => event.time);
+
+    // **IMPROVED: Handle all-day events first**
+    allDayEvents.forEach((event, index) => {
+        const eventElement = createAllDayEventElement(event, index, allDayEvents.length);
+        dayColumn.appendChild(eventElement);
+    });
+
+    // **IMPROVED: Group timed events by time slots**
+    const timeSlots = groupEventsByTimeSlot(timedEvents);
+
+    Object.keys(timeSlots).forEach(timeSlot => {
+        const eventsAtTime = timeSlots[timeSlot];
+
+        if (eventsAtTime.length === 1) {
+            // Single event - normal display
+            const eventElement = createSingleTimedEvent(eventsAtTime[0]);
+            dayColumn.appendChild(eventElement);
+        } else {
+            // Multiple events - create stacked/overlapping display
+            createStackedEvents(dayColumn, eventsAtTime, timeSlot);
+        }
+    });
+}
+
+// **NEW: Group events by time slot**
+function groupEventsByTimeSlot(events) {
+    const timeSlots = {};
+
+    events.forEach(event => {
+        const timeKey = event.time;
+        if (!timeSlots[timeKey]) {
+            timeSlots[timeKey] = [];
+        }
+        timeSlots[timeKey].push(event);
+    });
+
+    return timeSlots;
+}
+
+// **NEW: Create all-day event with proper spacing**
+function createAllDayEventElement(event, index, totalAllDay) {
+    const eventElement = document.createElement('div');
+    eventElement.className = 'week-event all-day-visible';
+
+    // Position all-day events at the top with spacing
+    const topOffset = index * 25; // 25px spacing between all-day events
+
+    eventElement.style.cssText = `
+        position: absolute;
+        top: ${topOffset}px;
+        left: 4px;
+        right: 4px;
+        height: 20px;
+        background: ${getListColor(event.list)};
+        color: white;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 3px;
+        cursor: pointer;
+        z-index: ${10 + index};
+        border: 1px solid rgba(255,255,255,0.3);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    `;
+
+    eventElement.textContent = event.title;
+
+    // Add completion styling
+    if (event.hasAssociatedTask && event.taskCompleted) {
+        eventElement.style.textDecoration = 'line-through';
+        eventElement.style.opacity = '0.7';
+    }
+
+    // Add hover effect
+    eventElement.addEventListener('mouseenter', () => {
+        eventElement.style.transform = 'scale(1.02)';
+        eventElement.style.zIndex = '999';
+    });
+
+    eventElement.addEventListener('mouseleave', () => {
+        eventElement.style.transform = 'scale(1)';
+        eventElement.style.zIndex = `${10 + index}`;
+    });
+
+    eventElement.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showEventDetails(event);
+    });
+
+    return eventElement;
+}
+
+// **NEW: Create single timed event (no overlap)**
+function createSingleTimedEvent(event) {
+    const [hours, minutes] = event.time.split(':').map(Number);
+    const endHours = event.endTime ? parseInt(event.endTime.split(':')[0]) : hours + 1;
+    const endMinutes = event.endTime ? parseInt(event.endTime.split(':')[1]) : minutes;
+
+    const topPosition = (hours * 60 + minutes) * (60 / 60);
+    const duration = Math.max(((endHours * 60 + endMinutes) - (hours * 60 + minutes)) * (60 / 60), 30);
+
+    const eventElement = document.createElement('div');
+    eventElement.className = 'week-event single-event';
+
+    eventElement.style.cssText = `
+        position: absolute;
+        top: ${topPosition}px;
+        left: 4px;
+        right: 4px;
+        height: ${duration}px;
+        background: ${getListColor(event.list)};
+        color: white;
+        font-size: 12px;
+        font-weight: 500;
+        padding: 4px 6px;
+        border-radius: 4px;
+        cursor: pointer;
+        z-index: 5;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        line-height: 1.2;
+    `;
+
+    eventElement.textContent = event.title;
+
+    // Add priority border
+    if (event.priority) {
+        const priorityColors = { high: '#ff5555', medium: '#ffa500', low: '#3498db' };
+        eventElement.style.borderLeft = `3px solid ${priorityColors[event.priority]}`;
+    }
+
+    // Add completion styling
+    if (event.hasAssociatedTask && event.taskCompleted) {
+        eventElement.style.textDecoration = 'line-through';
+        eventElement.style.opacity = '0.7';
+    }
+
+    eventElement.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showEventDetails(event);
+    });
+
+    return eventElement;
+}
+
+// **IMPROVED: Create stacked events for same time slot**
+function createStackedEvents(dayColumn, events, timeSlot) {
+    const [hours, minutes] = timeSlot.split(':').map(Number);
+    const baseTopPosition = (hours * 60 + minutes) * (60 / 60);
+
+    // **OPTION 1: Stacked Display (all events visible vertically)**
+    if (events.length <= 3) {
+        createVerticallyStackedEvents(dayColumn, events, baseTopPosition);
+    }
+    // **OPTION 2: Compact display with expandable view**
+    else {
+        createCompactExpandableEvents(dayColumn, events, baseTopPosition, timeSlot);
+    }
+}
+
+// **NEW: Create vertically stacked events (for 2-3 events)**
+function createVerticallyStackedEvents(dayColumn, events, baseTopPosition) {
+    const eventHeight = 30; // Shorter height for stacked events
+    const stackSpacing = 32; // 32px spacing between stacked events
+
+    events.forEach((event, index) => {
+        const eventElement = document.createElement('div');
+        eventElement.className = 'week-event stacked-event';
+
+        const topPosition = baseTopPosition + (index * stackSpacing);
+
+        eventElement.style.cssText = `
+            position: absolute;
+            top: ${topPosition}px;
+            left: 4px;
+            right: 4px;
+            height: ${eventHeight}px;
+            background: ${getListColor(event.list)};
+            color: white;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: ${10 + index};
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            line-height: 1.2;
+            border: 2px solid rgba(255,255,255,0.4);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        `;
+
+        // Add stack indicator
+        const stackIndicator = document.createElement('span');
+        stackIndicator.style.cssText = `
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ff4444;
+            color: white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            font-size: 9px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+        `;
+        stackIndicator.textContent = index + 1;
+        eventElement.appendChild(stackIndicator);
+
+        // Add time label for context
+        const timeLabel = document.createElement('div');
+        timeLabel.style.cssText = `
+            position: absolute;
+            bottom: -15px;
+            left: 0;
+            font-size: 9px;
+            color: #666;
+            background: white;
+            padding: 1px 3px;
+            border-radius: 2px;
+            font-weight: bold;
+        `;
+        timeLabel.textContent = formatTime(event.time);
+        eventElement.appendChild(timeLabel);
+
+        eventElement.innerHTML = `<span style="line-height: 1.2;">${event.title}</span>`;
+        eventElement.appendChild(stackIndicator);
+        eventElement.appendChild(timeLabel);
+
+        // Add hover effect
+        eventElement.addEventListener('mouseenter', () => {
+            eventElement.style.transform = 'scale(1.05)';
+            eventElement.style.zIndex = '999';
+            eventElement.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+        });
+
+        eventElement.addEventListener('mouseleave', () => {
+            eventElement.style.transform = 'scale(1)';
+            eventElement.style.zIndex = `${10 + index}`;
+            eventElement.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+        });
+
+        // Add completion styling
+        if (event.hasAssociatedTask && event.taskCompleted) {
+            eventElement.style.textDecoration = 'line-through';
+            eventElement.style.opacity = '0.7';
+        }
+
+        eventElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showEventDetails(event);
+        });
+
+        dayColumn.appendChild(eventElement);
+    });
+}
+
+// **NEW: Create compact display with expansion (for 4+ events)**
+function createCompactExpandableEvents(dayColumn, events, baseTopPosition, timeSlot) {
+    // Create main container
+    const containerElement = document.createElement('div');
+    containerElement.className = 'week-event compact-events';
+
+    containerElement.style.cssText = `
+        position: absolute;
+        top: ${baseTopPosition}px;
+        left: 4px;
+        right: 4px;
+        height: 40px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 6px;
+        border-radius: 6px;
+        cursor: pointer;
+        z-index: 15;
+        overflow: hidden;
+        border: 2px solid rgba(255,255,255,0.5);
+        box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    `;
+
+    // Add main text
+    const mainText = document.createElement('div');
+    mainText.textContent = `${events.length} events at ${formatTime(timeSlot)}`;
+
+    // Add expand icon
+    const expandIcon = document.createElement('div');
+    expandIcon.innerHTML = '📋';
+    expandIcon.style.fontSize = '14px';
+
+    containerElement.appendChild(mainText);
+    containerElement.appendChild(expandIcon);
+
+    // Add click handler to show all events
+    containerElement.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showCompactEventsModal(events, timeSlot);
+    });
+
+    // Add hover effect
+    containerElement.addEventListener('mouseenter', () => {
+        containerElement.style.transform = 'scale(1.05)';
+        containerElement.style.zIndex = '999';
+        expandIcon.style.transform = 'rotate(10deg)';
+    });
+
+    containerElement.addEventListener('mouseleave', () => {
+        containerElement.style.transform = 'scale(1)';
+        containerElement.style.zIndex = '15';
+        expandIcon.style.transform = 'rotate(0deg)';
+    });
+
+    dayColumn.appendChild(containerElement);
+}
+
+// **NEW: Modal for compact events display**
+function showCompactEventsModal(events, timeSlot) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        animation: fadeIn 0.3s ease;
+    `;
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 450px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+    `;
+
+    // Title
+    const title = document.createElement('h3');
+    title.textContent = `Events at ${formatTime(timeSlot)}`;
+    title.style.cssText = `
+        margin: 0 0 20px 0;
+        color: #1e3a8a;
+        border-bottom: 3px solid #e5e7eb;
+        padding-bottom: 12px;
+        font-size: 18px;
+    `;
+
+    modalContent.appendChild(title);
+
+    // Event list
+    events.forEach((event, index) => {
+        const eventDiv = document.createElement('div');
+        eventDiv.style.cssText = `
+            padding: 16px;
+            margin: 12px 0;
+            border-radius: 10px;
+            border-left: 5px solid ${getListColor(event.list)};
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        `;
+
+        eventDiv.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 8px; color: #1e3a8a; font-size: 14px;">${event.title}</div>
+            <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">
+                ${event.description || 'No description'}
+            </div>
+            <div style="font-size: 11px; color: #9ca3af;">
+                Priority: ${event.priority || 'None'} • 
+                List: ${event.list || 'None'}
+                ${event.hasAssociatedTask ? ' • 📋 Linked to task' : ''}
+            </div>
+        `;
+
+        
+
+
+        // Add number badge
+        const badge = document.createElement('div');
+        badge.style.cssText = `
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #1e3a8a;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+        `;
+        badge.textContent = index + 1;
+        eventDiv.appendChild(badge);
+
+        eventDiv.addEventListener('click', () => {
+            modal.remove();
+            showEventDetails(event);
+        });
+
+        eventDiv.addEventListener('mouseenter', () => {
+            eventDiv.style.background = '#e9ecef';
+            eventDiv.style.transform = 'translateX(4px)';
+            eventDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+        });
+
+        eventDiv.addEventListener('mouseleave', () => {
+            eventDiv.style.background = '#f8f9fa';
+            eventDiv.style.transform = 'translateX(0)';
+            eventDiv.style.boxShadow = 'none';
+        });
+
+        modalContent.appendChild(eventDiv);
+    });
+
+    // Close button
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Close';
+    closeButton.style.cssText = `
+        margin-top: 24px;
+        padding: 12px 24px;
+        background: #6b7280;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        width: 100%;
+        font-size: 14px;
+        font-weight: 600;
+        transition: background 0.2s;
+    `;
+
+    closeButton.addEventListener('click', () => modal.remove());
+    closeButton.addEventListener('mouseenter', () => {
+        closeButton.style.background = '#4b5563';
+    });
+    closeButton.addEventListener('mouseleave', () => {
+        closeButton.style.background = '#6b7280';
+    });
+
+    modalContent.appendChild(closeButton);
+    modal.appendChild(modalContent);
+
+    // Close on background click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+
+    document.body.appendChild(modal);
+}
+
+console.log('✅ CALENDAR: Improved overlapping events - all events now visible!');
+
+
+
 function renderWeekView() {
     console.log('📅 CALENDAR: Rendering week view with overlap detection...');
     const weekHeader = document.getElementById('week-header');
