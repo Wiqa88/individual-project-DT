@@ -970,7 +970,7 @@ function showCompactEventsModal(events, timeSlot) {
             </div>
         `;
 
-        
+
 
 
         // Add number badge
@@ -3076,6 +3076,117 @@ function showEventDetails(event) {
 
     modal.style.display = 'flex';
 }
+
+
+function setupCalendarEventListeners() {
+    // View buttons
+    document.querySelectorAll('.view-option').forEach(button => {
+        button.addEventListener('click', function() {
+            changeView(this.dataset.view);
+        });
+    });
+
+    // Navigation buttons
+    const prevBtn = document.getElementById('prev-period');
+    const nextBtn = document.getElementById('next-period');
+
+    if (prevBtn) prevBtn.addEventListener('click', navigatePrevious);
+    if (nextBtn) nextBtn.addEventListener('click', navigateNext);
+
+    // **FIXED: Mini calendar navigation with main calendar update**
+    const prevMonthBtn = document.getElementById('prev-month-btn');
+    const nextMonthBtn = document.getElementById('next-month-btn');
+
+    if (prevMonthBtn) {
+        prevMonthBtn.addEventListener('click', function() {
+            console.log('📅 MINI CALENDAR: Previous month clicked');
+
+            // Update the current date
+            currentDate.setMonth(currentDate.getMonth() - 1);
+
+            // Update mini calendar display
+            renderMiniCalendar();
+
+            // **CRITICAL: Update main calendar view**
+            updateCalendarView();
+
+            console.log(`📅 MINI CALENDAR: Navigated to ${currentDate.toDateString()}`);
+        });
+    }
+
+    if (nextMonthBtn) {
+        nextMonthBtn.addEventListener('click', function() {
+            console.log('📅 MINI CALENDAR: Next month clicked');
+
+            // Update the current date
+            currentDate.setMonth(currentDate.getMonth() + 1);
+
+            // Update mini calendar display
+            renderMiniCalendar();
+
+            // **CRITICAL: Update main calendar view**
+            updateCalendarView();
+
+            console.log(`📅 MINI CALENDAR: Navigated to ${currentDate.toDateString()}`);
+        });
+    }
+
+    // Modal event listeners
+    const addEventLink = document.getElementById('add-event-link');
+    const eventModal = document.getElementById('event-modal');
+    const closeModalButtons = document.querySelectorAll('.close-modal');
+    const cancelEventButton = document.getElementById('cancel-event');
+    const saveEventButton = document.getElementById('save-event');
+
+    if (addEventLink) {
+        addEventLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            showAddEventModal();
+        });
+    }
+
+    if (closeModalButtons) {
+        closeModalButtons.forEach(button => {
+            button.addEventListener('click', closeAllModals);
+        });
+    }
+
+    if (cancelEventButton) cancelEventButton.addEventListener('click', closeAllModals);
+    if (saveEventButton) saveEventButton.addEventListener('click', saveEvent);
+
+    // Details modal buttons
+    const deleteEventBtn = document.getElementById('delete-event');
+    const editEventBtn = document.getElementById('edit-event');
+
+    if (deleteEventBtn) deleteEventBtn.addEventListener('click', deleteSelectedEvent);
+    if (editEventBtn) editEventBtn.addEventListener('click', editSelectedEvent);
+
+    // Sidebar navigation
+    const weekLink = document.getElementById('week-link');
+    const monthLink = document.getElementById('month-link');
+
+    if (weekLink) {
+        weekLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            changeView('week');
+        });
+    }
+
+    if (monthLink) {
+        monthLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            changeView('month');
+        });
+    }
+
+    // List management
+    const addListBtn = document.getElementById('add-list-btn');
+    if (addListBtn) addListBtn.addEventListener('click', addNewList);
+}
+
+
+
+
 function editSelectedEvent() {
     if (!selectedEvent) return;
 
