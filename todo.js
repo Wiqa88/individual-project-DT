@@ -1975,7 +1975,7 @@ document.addEventListener("DOMContentLoaded", function() {
         return false;
     }
 
-    
+
 
 // Enhanced addTask function to ensure consistent priority values
     function normalizeTaskPriority(priority) {

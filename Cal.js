@@ -466,9 +466,8 @@ async function loadEvents() {
     console.log(`📊 CALENDAR: Final event count: ${events.length}`);
 }
 
-// Enhanced renderWeekView function with better event positioning
 function renderWeekView() {
-    console.log('📅 CALENDAR: Rendering week view...');
+    console.log('📅 CALENDAR: Rendering week view with overlap detection...');
     const weekHeader = document.getElementById('week-header');
     const weekGrid = document.getElementById('week-grid');
 
@@ -507,6 +506,8 @@ function renderWeekView() {
         // Create column for the day
         const dayColumn = document.createElement('div');
         dayColumn.className = 'week-column';
+        dayColumn.style.position = 'relative'; // Important for positioning
+
         if (dayHeader.classList.contains('today')) {
             dayColumn.classList.add('today');
         }
@@ -548,29 +549,417 @@ function renderWeekView() {
             dayColumn.appendChild(timeIndicator);
         }
 
-        // Get events for this day and add them
+        // **ENHANCED: Get events for this day and handle overlaps**
         const dayFormatted = formatDate(dayDate);
         const dayEvents = getEventsForDay(dayFormatted);
 
         console.log(`📅 CALENDAR: Day ${dayFormatted} has ${dayEvents.length} events`);
 
-        dayEvents.forEach((event, index) => {
-            const eventElement = createWeekDayEvent(event, false);
-            if (eventElement) {
-                // Add some horizontal offset for multiple events
-                eventElement.style.left = `${2 + (index * 2)}px`;
-                eventElement.style.right = `${2 + (index * 2)}px`;
-                eventElement.style.zIndex = `${10 + index}`;
-                dayColumn.appendChild(eventElement);
-                console.log(`📅 CALENDAR: Added event "${event.title}" to ${dayFormatted}`);
-            }
+        // **NEW: Process overlapping events**
+        const processedEvents = processOverlappingEvents(dayEvents);
+
+        processedEvents.forEach((eventGroup, groupIndex) => {
+            eventGroup.forEach((event, eventIndex) => {
+                const eventElement = createWeekDayEventWithOverlap(event, eventGroup.length, eventIndex, groupIndex);
+                if (eventElement) {
+                    dayColumn.appendChild(eventElement);
+                    console.log(`📅 CALENDAR: Added event "${event.title}" to ${dayFormatted} (group ${groupIndex}, position ${eventIndex})`);
+                }
+            });
         });
 
         weekGrid.appendChild(dayColumn);
     }
 
-    console.log(`✅ CALENDAR: Week view rendered with ${events.length} total events`);
+    console.log(`✅ CALENDAR: Week view rendered with ${events.length} total events and overlap detection`);
 }
+
+function processOverlappingEvents(dayEvents) {
+    // Separate all-day and timed events
+    const allDayEvents = dayEvents.filter(event => !event.time);
+    const timedEvents = dayEvents.filter(event => event.time);
+
+    // Group overlapping timed events
+    const overlappingGroups = [];
+    const processedEvents = new Set();
+
+    timedEvents.forEach(event => {
+        if (processedEvents.has(event.id)) return;
+
+        const overlappingGroup = [event];
+        processedEvents.add(event.id);
+
+        // Find all events that overlap with this one
+        timedEvents.forEach(otherEvent => {
+            if (processedEvents.has(otherEvent.id)) return;
+
+            if (eventsOverlap(event, otherEvent)) {
+                overlappingGroup.push(otherEvent);
+                processedEvents.add(otherEvent.id);
+            }
+        });
+
+        overlappingGroups.push(overlappingGroup);
+    });
+
+    // Add all-day events as individual groups
+    allDayEvents.forEach(event => {
+        overlappingGroups.push([event]);
+    });
+
+    return overlappingGroups;
+}
+
+
+// **NEW: Function to check if two events overlap**
+function eventsOverlap(event1, event2) {
+    if (!event1.time || !event2.time) return false;
+
+    const start1 = getEventStartMinutes(event1);
+    const end1 = getEventEndMinutes(event1);
+    const start2 = getEventStartMinutes(event2);
+    const end2 = getEventEndMinutes(event2);
+
+    // Events overlap if one starts before the other ends
+    return start1 < end2 && start2 < end1;
+}
+
+function getEventStartMinutes(event) {
+    if (!event.time) return 0;
+    const [hours, minutes] = event.time.split(':').map(Number);
+    return hours * 60 + minutes;
+}
+
+function getEventEndMinutes(event) {
+    if (!event.time) return 1440; // End of day for all-day events
+
+    if (event.endTime) {
+        const [hours, minutes] = event.endTime.split(':').map(Number);
+        return hours * 60 + minutes;
+    }
+
+    // Default to 1 hour duration
+    const startMinutes = getEventStartMinutes(event);
+    return startMinutes + 60;
+}
+function createWeekDayEventWithOverlap(event, totalInGroup, indexInGroup, groupIndex, isDayView = false) {
+    if (!event.time) {
+        // All-day event - show at top with overlap offset
+        const eventElement = document.createElement('div');
+        eventElement.className = isDayView ? 'day-event all-day' : 'week-event all-day';
+
+        // Add task completion styling
+        if (event.hasAssociatedTask || event.associatedTaskId) {
+            if (event.taskCompleted) {
+                eventElement.style.textDecoration = 'line-through';
+                eventElement.style.opacity = '0.7';
+            }
+            eventElement.title = `Linked to task${event.taskCompleted ? ' (completed)' : ''}`;
+        }
+
+        eventElement.textContent = event.title;
+
+        // **ENHANCED: Position all-day events with overlap offset**
+        const topOffset = groupIndex * 25; // 25px offset per group
+        eventElement.style.top = `${topOffset}px`;
+        eventElement.style.height = '20px';
+        eventElement.style.backgroundColor = getListColor(event.list);
+        eventElement.style.color = 'white';
+        eventElement.style.fontSize = isDayView ? '14px' : '12px';
+        eventElement.style.padding = '2px 6px';
+        eventElement.style.borderRadius = '3px';
+        eventElement.style.cursor = 'pointer';
+        eventElement.style.position = 'absolute';
+        eventElement.style.left = isDayView ? '10px' : '2px';
+        eventElement.style.right = isDayView ? '10px' : '2px';
+        eventElement.style.zIndex = `${5 + groupIndex}`;
+
+        // **NEW: Add overlap indicator for all-day events**
+        if (totalInGroup > 1) {
+            eventElement.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+            eventElement.style.border = '1px solid rgba(255,255,255,0.3)';
+
+            // Add count indicator
+            const countIndicator = document.createElement('span');
+            countIndicator.style.cssText = `
+                position: absolute;
+                top: -8px;
+                right: -8px;
+                background: #ff4444;
+                color: white;
+                border-radius: 50%;
+                width: 16px;
+                height: 16px;
+                font-size: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+            `;
+            countIndicator.textContent = totalInGroup;
+            eventElement.appendChild(countIndicator);
+        }
+
+        eventElement.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (totalInGroup > 1) {
+                showOverlappingEventsModal(event, totalInGroup);
+            } else {
+                showEventDetails(event);
+            }
+        });
+
+        return eventElement;
+    }
+
+    // **ENHANCED: Timed event with overlap support**
+    const [hours, minutes] = event.time.split(':').map(Number);
+    const endHours = event.endTime ? parseInt(event.endTime.split(':')[0]) : hours + 1;
+    const endMinutes = event.endTime ? parseInt(event.endTime.split(':')[1]) : minutes;
+
+    // Calculate position and height
+    const topPosition = (hours * 60 + minutes) * (60 / 60); // 60px per hour
+    const duration = Math.max(((endHours * 60 + endMinutes) - (hours * 60 + minutes)) * (60 / 60), 30);
+
+    const eventElement = document.createElement('div');
+    eventElement.className = isDayView ? 'day-event' : 'week-event';
+    eventElement.textContent = event.title;
+
+    // **ENHANCED: Calculate overlap positioning**
+    const columnWidth = 100 / totalInGroup; // Percentage width for each column
+    const leftOffset = indexInGroup * columnWidth; // Percentage left offset
+
+    eventElement.style.top = `${topPosition}px`;
+    eventElement.style.height = `${duration}px`;
+    eventElement.style.backgroundColor = getListColor(event.list);
+    eventElement.style.color = 'white';
+    eventElement.style.fontSize = isDayView ? '14px' : '11px'; // Smaller font for overlaps
+    eventElement.style.padding = isDayView ? '4px 8px' : '2px 4px';
+    eventElement.style.borderRadius = '4px';
+    eventElement.style.cursor = 'pointer';
+    eventElement.style.position = 'absolute';
+    eventElement.style.overflow = 'hidden';
+    eventElement.style.textOverflow = 'ellipsis';
+    eventElement.style.whiteSpace = 'nowrap';
+
+    // **NEW: Overlap positioning**
+    if (totalInGroup > 1) {
+        eventElement.style.left = `${leftOffset}%`;
+        eventElement.style.width = `${columnWidth - 1}%`; // -1% for spacing
+        eventElement.style.zIndex = `${10 + indexInGroup}`;
+
+        // **NEW: Visual indicators for overlapping events**
+        eventElement.style.border = '2px solid rgba(255,255,255,0.5)';
+        eventElement.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+
+        // Add overlap count indicator
+        const overlapIndicator = document.createElement('div');
+        overlapIndicator.style.cssText = `
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            font-size: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        `;
+        overlapIndicator.textContent = `${indexInGroup + 1}/${totalInGroup}`;
+        eventElement.appendChild(overlapIndicator);
+
+        // **NEW: Different border colors for different positions**
+        const borderColors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3'];
+        eventElement.style.borderLeftColor = borderColors[indexInGroup % borderColors.length];
+        eventElement.style.borderLeftWidth = '4px';
+
+    } else {
+        eventElement.style.left = isDayView ? '10px' : '2px';
+        eventElement.style.right = isDayView ? '10px' : '2px';
+        eventElement.style.zIndex = '5';
+    }
+
+    // Add task completion styling
+    if (event.hasAssociatedTask || event.associatedTaskId) {
+        if (event.taskCompleted) {
+            eventElement.style.textDecoration = 'line-through';
+            eventElement.style.opacity = '0.7';
+        }
+        eventElement.title = `Linked to task${event.taskCompleted ? ' (completed)' : ''}`;
+
+        // Add small task icon (adjust position for overlaps)
+        const taskIcon = document.createElement('div');
+        taskIcon.innerHTML = event.taskCompleted ? '✓' : '📋';
+        taskIcon.style.cssText = `
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            font-size: 8px;
+            opacity: 0.8;
+        `;
+        eventElement.appendChild(taskIcon);
+    }
+
+    // Set priority border if applicable and not overlapping
+    if (event.priority && totalInGroup === 1) {
+        switch(event.priority) {
+            case 'high':
+                eventElement.style.borderLeft = '3px solid #ff5555';
+                break;
+            case 'medium':
+                eventElement.style.borderLeft = '3px solid #ffa500';
+                break;
+            case 'low':
+                eventElement.style.borderLeft = '3px solid #3498db';
+                break;
+        }
+    }
+
+    eventElement.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (totalInGroup > 1) {
+            showOverlappingEventsModal(event, totalInGroup);
+        } else {
+            showEventDetails(event);
+        }
+    });
+
+    return eventElement;
+}
+
+
+// **NEW: Modal for overlapping events**
+function showOverlappingEventsModal(clickedEvent, totalCount) {
+    // Find all overlapping events at the same time
+    const eventTime = clickedEvent.time;
+    const eventDate = clickedEvent.date;
+
+    const overlappingEvents = events.filter(event =>
+        event.date === eventDate &&
+        event.time === eventTime
+    );
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    `;
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        max-width: 400px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+    `;
+
+    const title = document.createElement('h3');
+    title.textContent = `Overlapping Events (${totalCount})`;
+    title.style.cssText = `
+        margin: 0 0 15px 0;
+        color: #1e3a8a;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 10px;
+    `;
+
+    const timeInfo = document.createElement('p');
+    timeInfo.textContent = `${formatTime(eventTime)} on ${formatDate(eventDate)}`;
+    timeInfo.style.cssText = `
+        margin: 0 0 20px 0;
+        color: #6b7280;
+        font-style: italic;
+    `;
+
+    modalContent.appendChild(title);
+    modalContent.appendChild(timeInfo);
+
+    // List all overlapping events
+    overlappingEvents.forEach((event, index) => {
+        const eventDiv = document.createElement('div');
+        eventDiv.style.cssText = `
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border-left: 4px solid ${getListColor(event.list)};
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: background 0.2s;
+        `;
+
+        if (event.id === clickedEvent.id) {
+            eventDiv.style.background = '#e3f2fd';
+            eventDiv.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        }
+
+        eventDiv.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 4px;">${event.title}</div>
+            <div style="font-size: 12px; color: #6b7280;">
+                ${event.description || 'No description'} • 
+                Priority: ${event.priority || 'None'} • 
+                List: ${event.list || 'None'}
+            </div>
+        `;
+
+        eventDiv.addEventListener('click', () => {
+            modal.remove();
+            showEventDetails(event);
+        });
+
+        eventDiv.addEventListener('mouseenter', () => {
+            eventDiv.style.background = '#e9ecef';
+        });
+
+        eventDiv.addEventListener('mouseleave', () => {
+            eventDiv.style.background = event.id === clickedEvent.id ? '#e3f2fd' : '#f8f9fa';
+        });
+
+        modalContent.appendChild(eventDiv);
+    });
+
+    // Close button
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Close';
+    closeButton.style.cssText = `
+        margin-top: 20px;
+        padding: 10px 20px;
+        background: #6b7280;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        width: 100%;
+    `;
+
+    closeButton.addEventListener('click', () => modal.remove());
+
+    modalContent.appendChild(closeButton);
+    modal.appendChild(modalContent);
+
+    // Close on background click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+    });
+
+    document.body.appendChild(modal);
+}
+
+console.log('✅ CALENDAR: Enhanced week view with overlapping events support loaded');
 
 async function deleteSelectedEvent() {
     if (!selectedEvent) return;
