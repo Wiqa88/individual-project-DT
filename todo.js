@@ -1975,6 +1975,37 @@ document.addEventListener("DOMContentLoaded", function() {
         return false;
     }
 
+    function setupPomodoroNavigation() {
+        const pomodoroLink = document.getElementById('pomodoro-link');
+
+        if (pomodoroLink) {
+            pomodoroLink.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                console.log('🍅 Navigating to Pomodoro from Todo page...');
+
+                // Save tasks before navigating
+                if (typeof saveTasks === 'function') {
+                    saveTasks();
+                }
+
+                // Show user feedback
+                if (typeof showTaskNotification === 'function') {
+                    showTaskNotification('Opening Pomodoro Timer...', 'success');
+                }
+
+                // Navigate to calendar with pomodoro view
+                window.location.href = 'Cal.html#pomodoro';
+            });
+
+            console.log('✅ Pomodoro navigation handler added');
+        } else {
+            console.warn('⚠️ Pomodoro link not found');
+        }
+    }
+
+// Call the setup function
+    setupPomodoroNavigation();
 
 
 // Enhanced addTask function to ensure consistent priority values
