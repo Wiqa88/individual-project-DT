@@ -35,7 +35,6 @@ document.addEventListener("DOMContentLoaded", function() {
     const taskDescription = document.getElementById("task-description");
     const dueDate = document.getElementById("due-date");
     const priority = document.getElementById("priority");
-    const reminder = document.getElementById("reminder");
     const listSelect = document.getElementById("list");
     const addTaskButton = document.getElementById("add-task");
     const cancelTaskButton = document.getElementById("cancel-task");
@@ -218,7 +217,6 @@ document.addEventListener("DOMContentLoaded", function() {
             title: titleValue,
             description: taskDescription.value.trim(),
             date: dueDate.value || null,
-            reminder: reminder.value || null,
             priority: normalizeTaskPriority(priority.value),
             list: listSelect.value !== 'default' ? listSelect.value : 'N/A',
             completed: false,
@@ -522,7 +520,6 @@ document.addEventListener("DOMContentLoaded", function() {
         taskTitle.value = '';
         taskDescription.value = '';
         dueDate.value = '';
-        reminder.value = '';
         priority.value = 'priority';
         listSelect.value = 'default';
 
@@ -659,7 +656,6 @@ document.addEventListener("DOMContentLoaded", function() {
         metadata.classList.add("task-metadata");
 
         const dateDiv = createEditableField('date', formattedDueDate, '', task, 'Date: ');
-        const reminderDiv = createEditableField('reminder', formattedReminderDate, '', task, 'Reminder: ');
         const priorityDiv = createEditableSelectField('priority', task.priority, task, ['low', 'medium', 'high'], 'Priority: ');
         const listDiv = createEditableSelectField('list', task.list, task, ['N/A', ...lists], 'List: ');
 
@@ -724,7 +720,6 @@ document.addEventListener("DOMContentLoaded", function() {
         metadata.classList.add("task-metadata");
 
         const dateDiv = createEditableField('date', formattedDueDate, '', task, 'Date: ');
-        const reminderDiv = createEditableField('reminder', formattedReminderDate, '', task, 'Reminder: ');
         const priorityDiv = createEditableSelectField('priority', task.priority, task, ['low', 'medium', 'high'], 'Priority: ');
         const listDiv = createEditableSelectField('list', task.list, task, ['N/A', ...lists], 'List: ');
 
@@ -737,7 +732,7 @@ document.addEventListener("DOMContentLoaded", function() {
             deleteTask(task.id, taskItem);
         });
 
-        metadata.append(dateDiv, reminderDiv, priorityDiv, listDiv);
+        metadata.append(dateDiv, priorityDiv, listDiv);
         taskContent.append(titleDiv, descDiv, metadata);
 
         taskItemInner.append(taskRing, taskContent);
@@ -1624,7 +1619,6 @@ document.addEventListener("DOMContentLoaded", function() {
             title: titleValue,
             description: taskDescription.value.trim(),
             date: dueDate.value || null,
-            reminder: reminder.value || null,
             priority: normalizeTaskPriority(priority.value),
             list: listSelect.value !== 'default' ? listSelect.value : 'N/A',
             completed: false,
