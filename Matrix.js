@@ -286,29 +286,7 @@ function addTaskEventListeners(quadrant) {
             }
         });
 
-        // Edit button handler
-        const editBtn = taskItem.querySelector('.edit-btn');
-        if (editBtn) {
-            editBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const task = tasks.find(t => t.id == taskId);
-                if (task) {
-                    openEditModal(task);
-                }
-            });
-        }
 
-        // Delete button handler
-        const deleteBtn = taskItem.querySelector('.delete-btn');
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const task = tasks.find(t => t.id == taskId);
-                if (task) {
-                    deleteTask(task);
-                }
-            });
-        }
 
         // Complete/incomplete button handler
         const completeBtn = taskItem.querySelector('.complete-btn');
@@ -398,12 +376,7 @@ function createTaskHTML(task) {
                 <button class="control-btn complete-btn" title="${completeTitle}">
                     <i class="${completeIcon}"></i>
                 </button>
-                <button class="control-btn edit-btn" title="Edit Task">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="control-btn delete-btn" title="Delete Task">
-                    <i class="fas fa-trash"></i>
-                </button>
+
             </div>
         </div>
     `;
@@ -429,10 +402,7 @@ function showTaskDetails(task) {
                 <p><strong>Status:</strong> ${task.completed ? 'Completed' : 'Pending'}</p>
                 ${task.reminder ? `<p><strong>Reminder:</strong> ${new Date(task.reminder).toLocaleDateString()}</p>` : ''}
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" onclick="openEditModal(tasks.find(t => t.id == ${task.id})); this.closest('.modal').remove();">Edit</button>
-                <button class="btn btn-secondary" onclick="this.closest('.modal').remove();">Close</button>
-            </div>
+         
         </div>
     `;
 
