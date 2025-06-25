@@ -169,30 +169,8 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
 
-        setupHabitCreationEvents();
     }
 
-    function setupHabitCreationEvents() {
-        const makeHabitCheckbox = document.getElementById('make-habit-checkbox');
-        const habitSettings = document.getElementById('habit-settings');
-
-        if (makeHabitCheckbox) {
-            makeHabitCheckbox.addEventListener('change', function() {
-                if (this.checked) {
-                    habitSettings.style.display = 'block';
-                    habitSettings.classList.add('show');
-                    taskCreationBox.classList.add('has-habit');
-                } else {
-                    habitSettings.classList.add('hide');
-                    taskCreationBox.classList.remove('has-habit');
-                    setTimeout(() => {
-                        habitSettings.style.display = 'none';
-                        habitSettings.classList.remove('hide', 'show');
-                    }, 300);
-                }
-            });
-        }
-    }
 
     // ----------------------
     // Task Management
@@ -516,30 +494,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
 
-    function clearTaskForm() {
-        taskTitle.value = '';
-        taskDescription.value = '';
-        dueDate.value = '';
-        priority.value = 'priority';
-        listSelect.value = 'default';
 
-        const makeHabitCheckbox = document.getElementById('make-habit-checkbox');
-        const habitSettings = document.getElementById('habit-settings');
-
-        if (makeHabitCheckbox) {
-            makeHabitCheckbox.checked = false;
-        }
-
-        if (habitSettings) {
-            habitSettings.style.display = 'none';
-            habitSettings.classList.remove('show', 'hide');
-        }
-
-        taskCreationBox.classList.remove('has-habit');
-
-        taskTitle.style.height = 'auto';
-        taskDescription.style.height = 'auto';
-    }
 
 // Updated renderTasks function to use the new system when no specific view is set
     function renderTasks() {
