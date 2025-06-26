@@ -321,6 +321,7 @@
               <option value="Medium">Medium</option>
               <option value="high">High</option>
             </select>
+            <input type="text" id="reminder" placeholder="Set Reminder" onfocus="(this.type='date')" onblur="(this.type='text')">
             <select id="list">
               <option value="default">List</option>
               <!-- Custom lists will be added dynamically -->
@@ -329,6 +330,11 @@
 
           <!-- Habit Creation Option -->
           <div class="habit-creation-option">
+            <label class="habit-toggle">
+              <input type="checkbox" id="make-habit-checkbox">
+              <span class="checkmark"></span>
+              <span class="habit-label">
+                <i class="fas fa-seedling"></i> Make this a habit
               </span>
             </label>
 
@@ -788,7 +794,26 @@ Need more help? Contact support@taskmanager.pro`;
   });
 
   // Welcome message for authenticated users
+  window.addEventListener('load', () => {
+    // Show welcome message after a short delay
+    setTimeout(() => {
+      if (window.authGuard && window.authGuard.getCurrentUser()) {
+        const user = window.authGuard.getCurrentUser();
+        const now = new Date();
+        const hour = now.getHours();
 
+        let greeting;
+        if (hour < 12) greeting = 'Good morning';
+        else if (hour < 17) greeting = 'Good afternoon';
+        else greeting = 'Good evening';
+
+        // Show a personalized welcome
+        if (window.authGuard.showNotification) {
+          window.authGuard.showNotification(`${greeting}, ${user.name}! Ready to be productive?`, 'success');
+        }
+      }
+    }, 1500);
+  });
 
   // Enhanced task creation with user context
   if (window.addTask) {

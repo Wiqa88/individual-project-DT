@@ -10,6 +10,7 @@ let currentView = 'month';
 let selectedEvent = null;
 let currentPage = 'calendar'; // 'calendar' or 'pomodoro'
 
+
 // Pomodoro state
 let pomodoroTimer = {
     timeLeft: 25 * 60, // 25 minutes in seconds

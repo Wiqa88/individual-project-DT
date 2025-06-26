@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const taskDescription = document.getElementById("task-description");
     const dueDate = document.getElementById("due-date");
     const priority = document.getElementById("priority");
+    const reminder = document.getElementById("reminder");
     const listSelect = document.getElementById("list");
     const addTaskButton = document.getElementById("add-task");
     const cancelTaskButton = document.getElementById("cancel-task");
@@ -169,8 +170,30 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
 
+        setupHabitCreationEvents();
     }
 
+    function setupHabitCreationEvents() {
+        const makeHabitCheckbox = document.getElementById('make-habit-checkbox');
+        const habitSettings = document.getElementById('habit-settings');
+
+        if (makeHabitCheckbox) {
+            makeHabitCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    habitSettings.style.display = 'block';
+                    habitSettings.classList.add('show');
+                    taskCreationBox.classList.add('has-habit');
+                } else {
+                    habitSettings.classList.add('hide');
+                    taskCreationBox.classList.remove('has-habit');
+                    setTimeout(() => {
+                        habitSettings.style.display = 'none';
+                        habitSettings.classList.remove('hide', 'show');
+                    }, 300);
+                }
+            });
+        }
+    }
 
     // ----------------------
     // Task Management
@@ -195,6 +218,7 @@ document.addEventListener("DOMContentLoaded", function() {
             title: titleValue,
             description: taskDescription.value.trim(),
             date: dueDate.value || null,
+            reminder: reminder.value || null,
             priority: normalizeTaskPriority(priority.value),
             list: listSelect.value !== 'default' ? listSelect.value : 'N/A',
             completed: false,
@@ -494,7 +518,31 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
 
+    function clearTaskForm() {
+        taskTitle.value = '';
+        taskDescription.value = '';
+        dueDate.value = '';
+        reminder.value = '';
+        priority.value = 'priority';
+        listSelect.value = 'default';
 
+        const makeHabitCheckbox = document.getElementById('make-habit-checkbox');
+        const habitSettings = document.getElementById('habit-settings');
+
+        if (makeHabitCheckbox) {
+            makeHabitCheckbox.checked = false;
+        }
+
+        if (habitSettings) {
+            habitSettings.style.display = 'none';
+            habitSettings.classList.remove('show', 'hide');
+        }
+
+        taskCreationBox.classList.remove('has-habit');
+
+        taskTitle.style.height = 'auto';
+        taskDescription.style.height = 'auto';
+    }
 
 // Updated renderTasks function to use the new system when no specific view is set
     function renderTasks() {
@@ -611,6 +659,7 @@ document.addEventListener("DOMContentLoaded", function() {
         metadata.classList.add("task-metadata");
 
         const dateDiv = createEditableField('date', formattedDueDate, '', task, 'Date: ');
+        const reminderDiv = createEditableField('reminder', formattedReminderDate, '', task, 'Reminder: ');
         const priorityDiv = createEditableSelectField('priority', task.priority, task, ['low', 'medium', 'high'], 'Priority: ');
         const listDiv = createEditableSelectField('list', task.list, task, ['N/A', ...lists], 'List: ');
 
@@ -675,6 +724,7 @@ document.addEventListener("DOMContentLoaded", function() {
         metadata.classList.add("task-metadata");
 
         const dateDiv = createEditableField('date', formattedDueDate, '', task, 'Date: ');
+        const reminderDiv = createEditableField('reminder', formattedReminderDate, '', task, 'Reminder: ');
         const priorityDiv = createEditableSelectField('priority', task.priority, task, ['low', 'medium', 'high'], 'Priority: ');
         const listDiv = createEditableSelectField('list', task.list, task, ['N/A', ...lists], 'List: ');
 
@@ -687,7 +737,7 @@ document.addEventListener("DOMContentLoaded", function() {
             deleteTask(task.id, taskItem);
         });
 
-        metadata.append(dateDiv, priorityDiv, listDiv);
+        metadata.append(dateDiv, reminderDiv, priorityDiv, listDiv);
         taskContent.append(titleDiv, descDiv, metadata);
 
         taskItemInner.append(taskRing, taskContent);
@@ -1574,6 +1624,7 @@ document.addEventListener("DOMContentLoaded", function() {
             title: titleValue,
             description: taskDescription.value.trim(),
             date: dueDate.value || null,
+            reminder: reminder.value || null,
             priority: normalizeTaskPriority(priority.value),
             list: listSelect.value !== 'default' ? listSelect.value : 'N/A',
             completed: false,
@@ -1924,37 +1975,6 @@ document.addEventListener("DOMContentLoaded", function() {
         return false;
     }
 
-    function setupPomodoroNavigation() {
-        const pomodoroLink = document.getElementById('pomodoro-link');
-
-        if (pomodoroLink) {
-            pomodoroLink.addEventListener('click', function(e) {
-                e.preventDefault();
-
-                console.log('🍅 Navigating to Pomodoro from Todo page...');
-
-                // Save tasks before navigating
-                if (typeof saveTasks === 'function') {
-                    saveTasks();
-                }
-
-                // Show user feedback
-                if (typeof showTaskNotification === 'function') {
-                    showTaskNotification('Opening Pomodoro Timer...', 'success');
-                }
-
-                // Navigate to calendar with pomodoro view
-                window.location.href = 'Cal.html#pomodoro';
-            });
-
-            console.log('✅ Pomodoro navigation handler added');
-        } else {
-            console.warn('⚠️ Pomodoro link not found');
-        }
-    }
-
-// Call the setup function
-    setupPomodoroNavigation();
 
 
 // Enhanced addTask function to ensure consistent priority values
